@@ -1,0 +1,120 @@
+<div id="admin-page" class="page-section d-none fade-in">
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="fw-bold text-dark"><i class="fas fa-users-cog me-2 text-danger"></i>ระบบจัดการผู้ใช้งาน (Admin Panel)</h3>
+            <small class="text-muted">กำหนดสิทธิ์การเข้าถึงเมนูธุรกรรม (Role-based Access Control)</small>
+        </div>
+        <button class="btn btn-danger shadow-sm px-4 rounded-pill" onclick="openUserModal()">
+            <i class="fas fa-user-plus me-2"></i>เพิ่มผู้ใช้งาน
+        </button>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="tableUsers" style="width:100%">
+                    <thead class="bg-dark text-white">
+                        <tr>
+                            <th class="ps-4 py-3">อีเมล (Email)</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>ตำแหน่ง/สังกัด</th>
+                            <th class="text-center">บทบาท (Role)</th>
+                            <th class="text-center">สถานะ (Status)</th>
+                            <th class="text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content rounded-4 shadow-lg border-0">
+            <div class="modal-header bg-dark text-white py-3">
+                <h5 class="modal-title fw-bold"><i class="fas fa-user-edit me-2"></i>จัดการข้อมูลผู้ใช้งาน</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <form id="userForm" onsubmit="saveUserSubmit(event)">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">อีเมลผู้ใช้งาน <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control border-primary" id="u_email" required placeholder="example@gmail.com">
+                            <small class="text-muted">ใช้เพื่อตรวจสอบสิทธิ์การเข้าถึงเมนูธุรกรรม</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">ชื่อ (First Name) <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="u_fname" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">นามสกุล (Last Name) <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="u_lname" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">ตำแหน่ง</label>
+                            <input type="text" class="form-control" id="u_pos">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">กลุ่มงาน (Department)</label>
+                            <input type="text" class="form-control" id="u_dept">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">เบอร์โทรศัพท์</label>
+                            <input type="text" class="form-control" id="u_phone">
+                        </div>
+                        <div class="col-12"><hr class="my-2"></div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-danger">ระดับสิทธิ์ (Role) <span class="text-danger">*</span></label>
+                            <select class="form-select border-danger" id="u_role" required>
+                                <option value="EDITOR">EDITOR (ทำรายการธุรกรรมได้)</option>
+                                <option value="ADMIN">ADMIN (ดูและจัดการผู้ใช้งานได้)</option>
+                                <option value="PUBLIC">PUBLIC (ดูได้อย่างเดียว)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-success">สถานะ (Status) <span class="text-danger">*</span></label>
+                            <select class="form-select border-success" id="u_status" required>
+                                <option value="ACTIVE">ACTIVE (ใช้งานได้)</option>
+                                <option value="INACTIVE">INACTIVE (ระงับการใช้งาน)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="text-end mt-4">
+                        <button type="button" class="btn btn-secondary px-4 me-2" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="submit" class="btn btn-dark px-4 fw-bold" id="btnSaveUser"><i class="fas fa-save me-2"></i>บันทึก</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="loginModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header bg-success text-white py-3">
+        <h5 class="modal-title fw-bold mb-0"><i class="fas fa-user-check me-2"></i>ยืนยันตัวตน</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="loginForm" onsubmit="submitEmailLogin(event)">
+          <div class="mb-4">
+            <label class="form-label small fw-bold text-muted">กรุณาระบุอีเมลที่ลงทะเบียนไว้</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light text-secondary"><i class="fas fa-envelope"></i></span>
+              
+              <input type="password" class="form-control" id="loginEmailOnly" required placeholder="กรอกอีเมลเพื่อยืนยันตัวตน...">
+              
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success w-100 fw-bold rounded-pill shadow-sm py-2" id="btnLoginSubmit">
+            ตรวจสอบสิทธิ์
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
