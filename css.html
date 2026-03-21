@@ -99,4 +99,9 @@
       overflow: visible;                   /* สำคัญ: ถ้า % น้อยจนแถบสั้น ให้ตัวเลขล้นออกมาโชว์ข้างนอกได้ ไม่ต้องแอบ */
       white-space: nowrap;                 /* ห้ามตัดบรรทัด */
   }
+
+  /* แก้ไขให้ Popup แจ้งเตือน (SweetAlert) ลอยอยู่หน้าสุดเหนือ Navbar */
+    .swal2-container {
+        z-index: 9999 !important;
+    }
 </style>
