@@ -17,6 +17,9 @@
        ✅ ฟอร์มบันทึกจัดสรรงบประมาณ  </br>
        ✅ ประวัติการจัดสรรงบประมาณ </br>
        ⏳ Check Logic การบันทึกจัดสรร </br>
+Login - RBAC email Authen
+       Admin Panel
+       Edit Project
 
 10 กุมภาพันธ์ 2569 </br>
 ![2026-02-10_16-01-13](https://github.com/user-attachments/assets/d2d9f9b7-f892-449c-9f6e-bafaeed31098)
