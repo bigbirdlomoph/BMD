@@ -119,6 +119,10 @@
         <div id="dashboard-page" class="page-section fade-in">
             <div class="mb-4">
                 <h3 class="fw-bold text-dark"><i class="fas fa-chart-bar me-2 text-secondary"></i>Loei Provincial Public Health Office Budget Management Dashboard</h3>
+
+                <button class="btn btn-outline-success bg-white shadow-sm rounded-pill px-4 fw-bold" onclick="downloadTemplate()">
+                    <i class="fas fa-file-excel me-2"></i>ดาวน์โหลดแบบฟอร์มนำเข้า (Template)
+                </button>
             </div>
 
             <div class="section-title text-success">งบประมาณใน สป.สธ.</div>
@@ -233,8 +237,8 @@
             <div class="mb-4">
                 <h3 class="fw-bold text-dark"><i class="fas fa-search me-2 text-secondary"></i>ระบบสืบค้นแผนปฏิบัติ</h3>
             </div>
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body bg-light rounded-3">
+            <div class="card border-0 shadow-sm mb-4 sticky-filter-panel">
+                <div class="card-body bg-light rounded-3 py-3">
                     <div class="row g-2 align-items-end">
                         <div class="col-md-3">
                             <label class="form-label fw-bold small">กลุ่มงาน</label>
@@ -327,20 +331,24 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table id="searchTable" class="table table-hover w-100">
-                            <thead class="table-light">
+                      
+                        <table class="table table-hover align-middle mb-0" id="searchTable" style="width:100%">
+                            <thead class="bg-dark text-white">
                                 <tr>
-                                    <th class="ps-3">ลำดับ</th>
-                                    <th>กลุ่มงาน</th>
-                                    <th>รายการ/กิจกรรม</th>
-                                    <th>ประเภทงบ/แหล่งงบ</th>
-                                    <th class="text-center">ระยะเวลา</th>
-                                    <th class="text-end">อนุมัติ</th>
-                                    <th class="text-end">จัดสรร</th>
+                                    <th class="ps-3 text-center" style="width: 5%">ลำดับ</th>
+                                    <th class="text-center" style="width: 10%">กลุ่มงาน</th>
+                                    <th style="width: 33%">รายละเอียดโครงการ / กิจกรรม</th>
+                                    <th class="text-center" style="width: 12%">ระยะเวลา</th>
+                                    <th class="text-end" style="width: 10%">อนุมัติตามแผน</th>
+                                    <th class="text-end" style="width: 10%">จัดสรร</th>
+                                    <th class="text-end" style="width: 10%">เบิกจ่าย</th>
+                                    <th class="text-end" style="width: 10%">คงเหลือ</th>
                                 </tr>
                             </thead>
-                            <tbody id="searchTableBody"></tbody>
+                            <tbody id="searchTableBody">
+                                </tbody>
                         </table>
+                        
                     </div>
                 </div>
             </div>
@@ -350,7 +358,7 @@
             <div class="mb-4">
                 <h3 class="fw-bold text-dark"><i class="fas fa-calendar-alt me-2 text-secondary"></i>แผนงานประจำปี</h3>
             </div>
-            <div class="card border-0 shadow-sm mb-4">
+            <div class="card border-0 shadow-sm mb-4 sticky-filter-panel">
                 <div class="card-body bg-light rounded-3 py-3">
                     <div class="row g-2 align-items-end">
                         <div class="col-md-3">
@@ -1162,6 +1170,12 @@
     <?!= include('auth_js'); ?>
     <?!= include('masterplan_js'); ?>
 
-</body>
+  <!-- Library SheetJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+    <?!= include('js'); ?>
+    <?!= include('auth_js'); ?>
+    <?!= include('masterplan_js'); ?>
+
+</body>
 </html>

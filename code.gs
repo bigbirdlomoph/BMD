@@ -1262,3 +1262,106 @@ function getModalDropdownData() {
         return { error: e.message };
     }
 }
+
+// ==========================================
+// 📌 นำเข้าข้อมูล Master Plan แบบกลุ่ม (Batch Import)
+// ==========================================
+function importMasterPlanBatch(dataArray) {
+  var lock = LockService.getScriptLock();
+  try {
+    // ล็อคสคริปต์ 15 วินาที ป้องกันคนอัปโหลดพร้อมกัน
+    lock.waitLock(15000); 
+    
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(SHEET_NAME); // ชีต m_actionplan
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0]; // หัวตารางหลังบ้าน
+    
+    // 1. หาปีงบประมาณจากข้อมูลแรกเพื่อนำไปสร้าง รหัสโครงการ
+    var importYear = String(dataArray[0]["ปีงบประมาณ"] || new Date().getFullYear() + 543).trim();
+    var maxRunning = 0;
+    
+    // 2. วนลูปหา ID ล่าสุดของปีงบประมาณนั้น (เช่น P-2569-XXXX)
+    var idColIndex = headers.indexOf(COL_NAME.ID);
+    for (var i = 1; i < data.length; i++) {
+       var idVal = String(data[i][idColIndex] || "");
+       if (idVal.indexOf("P-" + importYear + "-") === 0) {
+           var numPart = parseInt(idVal.split("-")[2], 10);
+           if (!isNaN(numPart) && numPart > maxRunning) {
+               maxRunning = numPart;
+           }
+       }
+    }
+
+    var newRows = [];
+    // ตัวแปรสำหรับจับคู่เดือนที่ผู้ใช้พิมพ์ "ต.ค., พ.ย." ให้ตรงกับหัวคอลัมน์
+    var monthMap = ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'];
+
+    // 3. จัดเตรียมข้อมูลสำหรับเขียนลงชีต
+    for (var j = 0; j < dataArray.length; j++) {
+       var rowObj = dataArray[j];
+       maxRunning++; // บวก Running Number ขึ้น 1 อัตโนมัติ
+       var runningStr = ("000" + maxRunning).slice(-4); // เติม 0 ข้างหน้าให้ครบ 4 หลัก
+       var newId = "P-" + importYear + "-" + runningStr;
+       
+       var newRow = new Array(headers.length).fill(""); // สร้าง Array ว่างๆ ความยาวเท่าจำนวนคอลัมน์
+       
+       // ฟังก์ชันย่อยสำหรับเขียนค่าลงคอลัมน์ให้ตรงช่อง
+       function setVal(colName, val) {
+           var idx = headers.indexOf(colName);
+           if (idx > -1) newRow[idx] = val;
+       }
+
+       // --- 📌 ทำการ Mapping ข้อมูล (เอาข้อมูลจากหน้าบ้าน หยอดลงหลังบ้าน) ---
+       setVal(COL_NAME.ID, newId);
+       setVal(COL_NAME.ORDER, maxRunning);
+       setVal("ปีงบประมาณ", rowObj["ปีงบประมาณ"]);
+       setVal(COL_NAME.DEPT, rowObj["กลุ่มงาน/งาน"]);
+       setVal(COL_NAME.PROJ, rowObj["โครงการ"]);
+       setVal(COL_NAME.ACT, rowObj["กิจกรรมหลัก"]);
+       setVal(COL_NAME.SUB, rowObj["กิจกรรมย่อย"]);
+       setVal(COL_NAME.TYPE, rowObj["ประเภทงบ"]);
+       setVal(COL_NAME.SOURCE, rowObj["แหล่งงบประมาณ"]);
+       setVal("ผู้รับผิดชอบ", rowObj["ผู้รับผิดชอบ"]);
+       setVal("รหัสงบประมาณ", rowObj["รหัสงบประมาณ"]);
+       setVal("รหัสกิจกรรม", rowObj["รหัสกิจกรรม"]);
+       
+       // คำนวณยอดเงินเบื้องต้น
+       var approveAmt = parseFloat(rowObj["อนุมัติตามแผน"]) || 0;
+       var allocAmt = parseFloat(rowObj["จัดสรร"]) || 0;
+       setVal(COL_NAME.APPROVE, approveAmt);
+       setVal(COL_NAME.ALLOC, allocAmt);
+       setVal(COL_NAME.SPENT, 0); // เริ่มต้นเบิกจ่ายเป็น 0
+       setVal(COL_NAME.LOAN, 0);  // เริ่มต้นเงินยืมเป็น 0
+       setVal(COL_NAME.BAL, allocAmt); // คงเหลือตั้งต้นเท่ากับยอดจัดสรร
+       setVal(COL_NAME.STATUS, "ACTIVE");
+
+       // --- 📌 การจัดการคอลัมน์เดือน (ถ้ามี เช่น "ต.ค., พ.ย.") ---
+       var monthsStr = String(rowObj["เดือนที่ดำเนินการ"] || "");
+       var monthsArr = monthsStr.split(",").map(function(item) { return item.trim(); });
+       
+       for (var m = 0; m < monthsArr.length; m++) {
+           var mName = monthsArr[m];
+           // เช็คว่ามีชื่อเดือนนี้อยู่ใน monthMap ไหม (กันคนพิมพ์ผิด)
+           if (monthMap.indexOf(mName) > -1) {
+               setVal(mName, 1); // ไปใส่เลข 1 ที่คอลัมน์ชื่อเดือนนั้นๆ
+           }
+       }
+
+       newRows.push(newRow); // เก็บเข้าห่อใหญ่รอส่ง
+    }
+
+    // 4. บันทึกก้อนข้อมูลลงชีตในรอบเดียว (เสี้ยววินาที!)
+    if (newRows.length > 0) {
+       var startRow = sheet.getLastRow() + 1;
+       sheet.getRange(startRow, 1, newRows.length, headers.length).setValues(newRows);
+    }
+
+    return { success: true, count: newRows.length };
+
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  } finally {
+    lock.releaseLock(); // ปลดล็อค
+  }
+}

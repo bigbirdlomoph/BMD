@@ -456,4 +456,191 @@ function submitMasterPlan(e) {
         }).saveMasterPlan(payload); // ⚠️ คุณ Bird ต้องมีฟังก์ชันนี้รับค่าใน Code.gs นะครับ
     }
 }
+
+// ==========================================
+// 📌 ฟังก์ชันดาวน์โหลด Template สำหรับนำเข้าข้อมูล
+// ==========================================
+function downloadTemplate() {
+    // 1. กำหนดหัวตาราง 14 คอลัมน์ ตาม Requirement
+    const headers = [
+        "รหัสโครงการ", "ปีงบประมาณ", "กลุ่มงาน/งาน", "โครงการ", 
+        "กิจกรรมหลัก", "กิจกรรมย่อย", "ประเภทงบ", "แหล่งงบประมาณ", 
+        "ผู้รับผิดชอบ", "รหัสงบประมาณ", "รหัสกิจกรรม", "อนุมัติตามแผน", 
+        "จัดสรร", "เดือนที่ดำเนินการ"
+    ];
+
+    // 2. ใส่ข้อมูลตัวอย่าง (Dummy Data) 1 แถว เพื่อเป็นไกด์ไลน์ให้ผู้ใช้งาน
+    const sampleData = [
+        "(ระบบสร้างให้อัตโนมัติ)", "2569", "กลุ่มงานบริหารทั่วไป", "โครงการตัวอย่างการนำเข้าข้อมูล", 
+        "กิจกรรมหลักที่ 1", "กิจกรรมย่อยที่ 1.1", "สป.สธ.", "งบประมาณ สป.", 
+        "นายแพทย์ทดสอบ นามสมมติ", "00112233", "A01", 150000, 
+        150000, "ต.ค., พ.ย., ธ.ค."
+    ];
+
+    // 3. รวมหัวตารางและข้อมูลเข้าด้วยกัน
+    const worksheetData = [headers, sampleData];
+
+    // 4. แปลงข้อมูลเป็น Worksheet
+    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+    
+    // ปรับแต่งความกว้างของคอลัมน์ให้สวยงาม (Auto Width นิดหน่อย)
+    const wscols = headers.map(h => ({wch: Math.max(h.length + 8, 15)}));
+    ws['!cols'] = wscols;
+
+    // 5. สร้าง Workbook และจับยัด Worksheet ลงไป
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template_Import");
+
+    // 6. สั่งดาวน์โหลดไฟล์ออกมาเป็น .xlsx
+    XLSX.writeFile(wb, "BMD_Import_Template.xlsx");
+}
+
+// ==========================================
+// 📌 ระบบนำเข้าข้อมูล (Bulk Import V.1)
+// ==========================================
+let validImportData = []; // เก็บข้อมูลที่ผ่านการตรวจสอบ
+
+function openImportModal() {
+    $('#importFile').val('');
+    $('#previewContainer').addClass('d-none');
+    $('#btnConfirmImport').prop('disabled', true);
+    $('#importErrorMsg').text('');
+    validImportData = [];
+    new bootstrap.Modal(document.getElementById('modalImportPlan')).show();
+}
+
+// เมื่อผู้ใช้เลือกไฟล์ ให้ประมวลผลทันที
+document.getElementById('importFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            // แปลง Excel เป็น JSON Array
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet, {defval: ""});
+            validateAndPreviewData(jsonData);
+        } catch (err) {
+            $('#importErrorMsg').text('ไม่สามารถอ่านไฟล์ได้ โปรดตรวจสอบว่าไฟล์ไม่เสีย');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+// ฟังก์ชันตรวจสอบและแสดง Preview
+function validateAndPreviewData(data) {
+    if(data.length === 0) {
+        $('#importErrorMsg').text('ไฟล์ว่างเปล่า ไม่มีข้อมูลในตาราง');
+        return;
+    }
+
+    const headers = [
+        "รหัสโครงการ", "ปีงบประมาณ", "กลุ่มงาน/งาน", "โครงการ", 
+        "กิจกรรมหลัก", "กิจกรรมย่อย", "ประเภทงบ", "แหล่งงบประมาณ", 
+        "ผู้รับผิดชอบ", "รหัสงบประมาณ", "รหัสกิจกรรม", "อนุมัติตามแผน", 
+        "จัดสรร", "เดือนที่ดำเนินการ"
+    ];
+
+    // วาดหัวตาราง
+    let headHtml = '<tr><th class="text-center">#</th>';
+    headers.forEach(h => headHtml += `<th>${h}</th>`);
+    headHtml += '</tr>';
+    $('#previewHead').html(headHtml);
+
+    let bodyHtml = '';
+    let errorCount = 0;
+    validImportData = []; // เคลียร์ของเก่า
+
+    // วนลูปเช็คข้อมูลทีละแถว
+    data.forEach((row, index) => {
+        let isRowError = false;
+        let trHtml = '<tr><td class="text-center bg-light text-muted">' + (index + 1) + '</td>';
+        
+        // กรองแถวที่ว่างเปล่าออก (บางที Excel มีแถวว่างแถมมา)
+        if(!row['โครงการ'] && !row['กลุ่มงาน/งาน']) return; 
+
+        headers.forEach(col => {
+            let val = row[col] !== undefined ? row[col] : "";
+            let tdClass = "";
+            let errorMsg = "";
+
+            // --- กฎการตรวจสอบ (Validation Rules) ---
+            // 1. ช่องที่ห้ามว่าง
+            if (["ปีงบประมาณ", "กลุ่มงาน/งาน", "โครงการ", "อนุมัติตามแผน", "จัดสรร"].includes(col) && String(val).trim() === "") {
+                tdClass = "bg-danger bg-opacity-25 border-danger";
+                errorMsg = "ห้ามเป็นค่าว่าง";
+                isRowError = true;
+            }
+            // 2. ต้องเป็นตัวเลขเท่านั้น
+            if (["อนุมัติตามแผน", "จัดสรร"].includes(col) && isNaN(val)) {
+                tdClass = "bg-danger bg-opacity-25 border-danger";
+                errorMsg = "ต้องเป็นตัวเลข";
+                isRowError = true;
+            }
+
+            // นำเสนอช่องตาราง
+            if (tdClass) {
+                trHtml += `<td class="${tdClass}" title="${errorMsg}"><i class="fas fa-exclamation-circle text-danger"></i> ${val}</td>`;
+            } else {
+                trHtml += `<td>${val}</td>`;
+            }
+        });
+        trHtml += '</tr>';
+        bodyHtml += trHtml;
+
+        if(isRowError) errorCount++;
+        else validImportData.push(row); // เก็บข้อมูลที่ผ่านเข้า Array รอส่งหลังบ้าน
+    });
+
+    $('#previewBody').html(bodyHtml);
+    $('#previewContainer').removeClass('d-none');
+
+    // สรุปผล
+    const totalRows = data.filter(r => r['โครงการ']).length;
+    if (errorCount > 0) {
+        $('#previewStatus').removeClass('bg-success').addClass('bg-danger')
+            .html(`<i class="fas fa-times-circle"></i> พบข้อผิดพลาด ${errorCount} แถว (ไม่อนุญาตให้นำเข้า)`);
+        $('#btnConfirmImport').prop('disabled', true);
+        validImportData = []; // Clear array เพราะเป็น All or Nothing
+    } else {
+        $('#previewStatus').removeClass('bg-danger').addClass('bg-success')
+            .html(`<i class="fas fa-check-circle"></i> ข้อมูลถูกต้องทั้งหมด ${totalRows} แถว พร้อมนำเข้า`);
+        $('#btnConfirmImport').prop('disabled', false);
+    }
+}
+
+// ฟังก์ชันกดยืนยันส่งข้อมูลไปให้ Backend
+function submitImportData() {
+    if(validImportData.length === 0) return;
+
+    Swal.fire({
+        title: 'ยืนยันการนำเข้าข้อมูล?',
+        text: `ระบบกำลังจะนำเข้าข้อมูลจำนวน ${validImportData.length} รายการ`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        confirmButtonText: 'นำเข้าข้อมูล'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $('#btnConfirmImport').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...');
+            Swal.fire({ title: 'กำลังนำเข้าข้อมูล...', html: 'โปรดอย่าปิดหน้าต่างนี้', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+            // 🚀 เรียกใช้ฟังก์ชันใน Code.gs
+            google.script.run.withSuccessHandler(function(res) {
+                if(res.success) {
+                    $('#modalImportPlan').modal('hide');
+                    Swal.fire('สำเร็จ!', `นำเข้าข้อมูลเรียบร้อยแล้ว ${res.count} รายการ`, 'success');
+                    loadMasterPlanData(); // โหลดตารางใหม่
+                } else {
+                    Swal.fire('เกิดข้อผิดพลาด', res.message, 'error');
+                    $('#btnConfirmImport').prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i>ยืนยันการนำเข้า');
+                }
+            }).importMasterPlanBatch(validImportData);
+        }
+    });
+}
+
 </script>
