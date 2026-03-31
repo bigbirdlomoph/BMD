@@ -8,7 +8,7 @@ const IDLE_TIMEOUT_LIMIT = 15 * 60 * 1000; // 15 นาที
 let idleInterval;
 
 $(document).ready(function() {
-    // โหลดข้อมูลจาก LocalStorage ว่าเคย Login ไว้ไหม
+    // โหลดข้อมูลจาก LocalStorage
     var savedUser = localStorage.getItem('ap_monitoring_user');
     if(savedUser) {
         currentUser = JSON.parse(savedUser);
@@ -21,35 +21,52 @@ $(document).ready(function() {
     }
 });
 
-// เปิดหน้าต่างพิมพ์อีเมล
+// 1. ฟังก์ชันเปิดหน้าต่าง Login
 function performLogin() {
-    new bootstrap.Modal(document.getElementById('loginModal')).show();
+    var modalEl = document.getElementById('loginModal');
+    if (!modalEl) {
+        Swal.fire('ข้อผิดพลาด', 'ไม่พบ Modal เข้าสู่ระบบ', 'error');
+        return;
+    }
+
+    // ย้าย Modal ไปที่ Body แบบตรงไปตรงมา ป้องกันโดนหน้าอื่นซ่อนไว้
+    if (modalEl.parentNode !== document.body) {
+        document.body.appendChild(modalEl);
+    }
+
+    // ล้างค่าเก่า
+    $('#loginEmailOnly').val('');
+    $('#btnLoginSubmit').html('ตรวจสอบสิทธิ์').prop('disabled', false);
+
+    // เปิด Modal ด้วย Bootstrap 5 
+    var myModal = bootstrap.Modal.getInstance(modalEl);
+    if (!myModal) {
+        myModal = new bootstrap.Modal(modalEl);
+    }
+    myModal.show();
+
+    // 🚀 [แก้ปัญหาพฤติกรรม 1] โฟกัสช่องกรอกอัตโนมัติ ทำให้คุณพิมพ์แล้ว "กด Enter" ได้เลยทันที!
+    setTimeout(function() {
+        $('#loginEmailOnly').focus();
+    }, 500);
 }
 
-// เมื่อกดปุ่มยืนยันอีเมล
-// ฟังก์ชันเมื่อกดปุ่มยืนยันอีเมล
+// 2. ฟังก์ชันเมื่อกดยืนยัน (หรือกด Enter)
 function submitEmailLogin(e) {
-    e.preventDefault();
+    if(e) e.preventDefault(); // ป้องกันหน้าเว็บรีเฟรช
+    
     var email = $('#loginEmailOnly').val().trim();
     if(!email) return;
 
     var $btn = $('#btnLoginSubmit');
     $btn.html('<i class="fas fa-spinner fa-spin me-1"></i> กำลังตรวจสอบ...').prop('disabled', true);
-    
-    // 🛡️ ป้องกันระบบค้าง (ถ้าเกิน 10 วินาทีจะปลดล็อคปุ่มคืน)
-    var safeTimeout = setTimeout(function() {
-        $btn.html('ตรวจสอบสิทธิ์').prop('disabled', false);
-        Swal.fire('ข้อผิดพลาด', 'เซิร์ฟเวอร์ไม่ตอบสนอง โปรดตรวจสอบว่าได้ Save โค้ดที่ Code.gs แล้วหรือไม่', 'error');
-    }, 10000); 
 
-    // ส่งอีเมลไปเช็คที่เซิร์ฟเวอร์
     google.script.run
         .withSuccessHandler(function(res) {
-            clearTimeout(safeTimeout); // ปิดตัวจับเวลา เพราะเซิร์ฟเวอร์ตอบสนองแล้ว
             $btn.html('ตรวจสอบสิทธิ์').prop('disabled', false);
             
             if (!res) {
-                Swal.fire('ข้อผิดพลาด', 'เซิร์ฟเวอร์ไม่ส่งค่าสถานะกลับมา', 'error');
+                Swal.fire('ข้อผิดพลาด', 'เซิร์ฟเวอร์ไม่ตอบสนอง', 'error');
                 return;
             }
 
@@ -60,13 +77,22 @@ function submitEmailLogin(e) {
                 updateUIBasedOnRole(currentUser);
                 startIdleTimer();
                 
-                // 🛡️ วิธีปิด Modal แบบปลอดภัยที่สุด ไม่ให้ค้าง
-                try { $('#loginModal').modal('hide'); } catch(ex){}
-                try { bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide(); } catch(ex){}
-                $('.modal-backdrop').remove(); // ล้างฉากหลังดำ
-                $('body').removeClass('modal-open').css('padding-right', '');
+                // ============================================
+                // 🚀 [แก้ปัญหาพฤติกรรม 2,3,4] ปิด Modal อย่างถูกต้อง และล้างกระจกใสบังจอ 100%
+                // ============================================
+                var modalEl = document.getElementById('loginModal');
+                if (modalEl) {
+                    var bsModal = bootstrap.Modal.getInstance(modalEl);
+                    if (bsModal) bsModal.hide();
+                }
                 
-                $('#loginForm')[0].reset();
+                // เคลียร์เศษซากของ Modal ทิ้ง เพื่อให้เมนู Dropdown กลับมากดได้ทันที!
+                setTimeout(function() {
+                    $('.modal-backdrop').remove();
+                    $('body').removeClass('modal-open').css({'padding-right': '', 'overflow': ''});
+                    $('#loginForm')[0].reset();
+                }, 400);
+                // ============================================
                 
                 Swal.fire({
                     toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,
@@ -77,11 +103,10 @@ function submitEmailLogin(e) {
             }
         })
         .withFailureHandler(function(err) {
-            clearTimeout(safeTimeout);
             $btn.html('ตรวจสอบสิทธิ์').prop('disabled', false);
-            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: ' + err.message, 'error');
+            Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว: ' + err.message, 'error');
         })
-        .verifyEmailOnly(email); // <--- วิ่งไปเรียกฟังก์ชันใน Code.gs
+        .verifyEmailOnly(email); 
 }
 
 function performLogout() {
@@ -101,7 +126,7 @@ function performLogout() {
             
             clearInterval(idleInterval);
             $(document).off('mousemove keydown click scroll');
-            localStorage.removeItem('ap_monitoring_user'); // ลบข้อมูลที่จำไว้
+            localStorage.removeItem('ap_monitoring_user'); 
             
             currentUser = { role: 'PUBLIC', email: '', fullName: 'ผู้เยี่ยมชม', status: 'GUEST' };
             updateUIBasedOnRole(currentUser);
@@ -115,6 +140,7 @@ function performLogout() {
     });
 }
 
+// 3. จัดการแสดงผล UI
 function updateUIBasedOnRole(user) {
     $('#auth-loading').addClass('d-none');
 
@@ -122,41 +148,25 @@ function updateUIBasedOnRole(user) {
         $('#user-name-display').text(user.fullName);
         let badgeColor = user.role === 'ADMIN' ? 'bg-danger' : 'bg-warning text-dark';
         $('#user-role-badge').removeClass('bg-danger bg-warning text-dark bg-secondary').addClass(badgeColor).text(user.role);
-        $('#user-badge').removeClass('d-none');
-        $('#btn-logout').removeClass('d-none');
-        $('#btn-login').addClass('d-none');
-
+        
+        $('#user-badge, #btn-logout, #mobile-user-badge, #mobile-btn-logout').removeClass('d-none');
+        $('#btn-login, #mobile-btn-login').addClass('d-none');
         $('#mobile-user-name').text(user.fullName + ` (${user.role})`);
-        $('#mobile-user-badge').removeClass('d-none');
-        $('#mobile-btn-logout').removeClass('d-none');
-        $('#mobile-btn-login').addClass('d-none');
     } else {
-        $('#user-badge').addClass('d-none');
-        $('#btn-logout').addClass('d-none');
-        $('#btn-login').removeClass('d-none');
-
-        $('#mobile-user-badge').addClass('d-none');
-        $('#mobile-btn-logout').addClass('d-none');
-        $('#mobile-btn-login').removeClass('d-none');
+        $('#user-badge, #btn-logout, #mobile-user-badge, #mobile-btn-logout').addClass('d-none');
+        $('#btn-login, #mobile-btn-login').removeClass('d-none');
     }
 
     if (user.role === 'EDITOR' || user.role === 'ADMIN') {
-        $('#menu-transaction').removeClass('d-none');
-        $('#mobile-menu-transaction').removeClass('d-none');
+        $('#menu-transaction, #mobile-menu-transaction').removeClass('d-none');
     } else {
-        $('#menu-transaction').addClass('d-none');
-        $('#mobile-menu-transaction').addClass('d-none');
+        $('#menu-transaction, #mobile-menu-transaction').addClass('d-none');
     }
 
-    // โชว์เมนู Dropdown ให้เฉพาะ ADMIN
     if (user.role === 'ADMIN') {
-        $('#menu-admin-dropdown').removeClass('d-none'); // <--- เปิด Dropdown ใหม่
-        $('#mobile-menu-admin').removeClass('d-none');
-        
-        // (บรรทัดเก่าที่ชื่อ #menu-admin หรือ #menu-masterplan ถ้ามีให้ลบทิ้งได้เลยครับ)
+        $('#menu-admin-dropdown, #mobile-menu-admin').removeClass('d-none'); 
     } else {
-        $('#menu-admin-dropdown').addClass('d-none');    // <--- ซ่อน Dropdown ใหม่
-        $('#mobile-menu-admin').addClass('d-none');
+        $('#menu-admin-dropdown, #mobile-menu-admin').addClass('d-none');    
     }
 }
 
