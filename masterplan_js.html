@@ -1,68 +1,68 @@
 <script>
-// ==========================================
-// 📌 MASTER PLAN V.2.4 (Full JS + Modal + Filter Fix)
-// ==========================================
+    // ==========================================
+    // 📌 MASTER PLAN V.2.4 (Full JS + Modal + Filter Fix)
+    // ==========================================
 
-let globalMasterPlanData = []; 
-let dtMasterPlan = null; 
+    let globalMasterPlanData = [];
+    let dtMasterPlan = null;
 
-// 1️⃣ ดึงข้อมูลจากหลังบ้าน
-function loadMasterPlanData() {
-    Swal.fire({ title: 'กำลังโหลดข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-    
-    google.script.run.withSuccessHandler(function(data) {
-        try {
-            if (data && data.error) {
-                Swal.fire('Error จากหลังบ้าน', data.error, 'error');
-                return;
+    // 1️⃣ ดึงข้อมูลจากหลังบ้าน
+    function loadMasterPlanData() {
+        Swal.fire({ title: 'กำลังโหลดข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        google.script.run.withSuccessHandler(function (data) {
+            try {
+                if (data && data.error) {
+                    Swal.fire('Error จากหลังบ้าน', data.error, 'error');
+                    return;
+                }
+                globalMasterPlanData = data;
+                populateMasterPlanFilters(data);
+                renderMasterPlanTable(data);
+                updateMasterPlanSummary(data);
+                Swal.close();
+            } catch (err) {
+                Swal.fire('Error การประมวลผล', 'พบข้อผิดพลาด: ' + err.message, 'error');
+                console.error(err);
             }
-            globalMasterPlanData = data;
-            populateMasterPlanFilters(data); 
-            renderMasterPlanTable(data);     
-            updateMasterPlanSummary(data);   
-            Swal.close();
-        } catch (err) {
-            Swal.fire('Error การประมวลผล', 'พบข้อผิดพลาด: ' + err.message, 'error');
-            console.error(err);
-        }
-    }).withFailureHandler(function(error) {
-        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: ' + error.message, 'error');
-    }).getAdminMasterPlan(); 
-}
+        }).withFailureHandler(function (error) {
+            Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: ' + error.message, 'error');
+        }).getAdminMasterPlan();
+    }
 
-// 2️⃣ วาดตารางข้อมูล (DataTable)
-function renderMasterPlanTable(data) {
-    if (dtMasterPlan) { dtMasterPlan.destroy(); }
-    
-    let tbody = $('#masterPlanTableBody');
-    tbody.empty();
+    // 2️⃣ วาดตารางข้อมูล (DataTable)
+    function renderMasterPlanTable(data) {
+        if (dtMasterPlan) { dtMasterPlan.destroy(); }
 
-    data.forEach(function(row) {
-        // Badges
-        let badgeType = '';
-        if (row.type === 'เงินนอก สป.') badgeType = `<span class="badge bg-primary text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${row.type}</span>`;
-        else if (row.type === 'สป.สธ.') badgeType = `<span class="badge bg-success text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${row.type}</span>`;
-        else if (row.type) badgeType = `<span class="badge bg-secondary text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${row.type}</span>`;
+        let tbody = $('#masterPlanTableBody');
+        tbody.empty();
 
-        let badgeSource = '';
-        if (row.source === 'ไม่ใช้งบประมาณ') badgeSource = `<span class="badge bg-danger text-white me-1 shadow-sm"><i class="fas fa-ban me-1"></i>${row.source}</span>`;
-        else if (row.source === 'เงินบำรุง สสจ.เลย') badgeSource = `<span class="badge bg-primary text-white me-1 shadow-sm"><i class="fas fa-wallet me-1"></i>${row.source}</span>`;
-        else if (row.source) badgeSource = `<span class="badge bg-light text-dark border me-1 shadow-sm"><i class="fas fa-wallet me-1 text-secondary"></i>${row.source}</span>`;
+        data.forEach(function (row) {
+            // Badges
+            let badgeType = '';
+            if (row.type === 'เงินนอก สป.') badgeType = `<span class="badge bg-primary text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${row.type}</span>`;
+            else if (row.type === 'สป.สธ.') badgeType = `<span class="badge bg-success text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${row.type}</span>`;
+            else if (row.type) badgeType = `<span class="badge bg-secondary text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${row.type}</span>`;
 
-        let actHTML = row.act ? `<div class="text-secondary small fw-light text-truncate" style="max-width: 400px;" title="${row.act}"><i class="fas fa-caret-right me-1 text-muted"></i>${row.act}</div>` : '';
-        let subHTML = row.sub ? `<div class="text-secondary small fw-light text-truncate" style="max-width: 400px;" title="${row.sub}"><i class="fas fa-angle-double-right me-1 ms-3 text-muted"></i>${row.sub}</div>` : '';
+            let badgeSource = '';
+            if (row.source === 'ไม่ใช้งบประมาณ') badgeSource = `<span class="badge bg-danger text-white me-1 shadow-sm"><i class="fas fa-ban me-1"></i>${row.source}</span>`;
+            else if (row.source === 'เงินบำรุง สสจ.เลย') badgeSource = `<span class="badge bg-primary text-white me-1 shadow-sm"><i class="fas fa-wallet me-1"></i>${row.source}</span>`;
+            else if (row.source) badgeSource = `<span class="badge bg-light text-dark border me-1 shadow-sm"><i class="fas fa-wallet me-1 text-secondary"></i>${row.source}</span>`;
 
-        let s = String(row.status || '').trim().toUpperCase();
-        let statusBadge = '';
-        if(s === 'ACTIVE') statusBadge = '<span class="badge bg-success">ACTIVE</span>';
-        else if(s === 'INACTIVE') statusBadge = '<span class="badge bg-secondary">INACTIVE</span>';
-        else if(s === 'REFUNDED') statusBadge = '<span class="badge bg-danger">REFUNDED</span>';
-        else statusBadge = `<span class="badge bg-dark">${s || 'N/A'}</span>`;
+            let actHTML = row.act ? `<div class="text-secondary small fw-light text-truncate" style="max-width: 400px;" title="${row.act}"><i class="fas fa-caret-right me-1 text-muted"></i>${row.act}</div>` : '';
+            let subHTML = row.sub ? `<div class="text-secondary small fw-light text-truncate" style="max-width: 400px;" title="${row.sub}"><i class="fas fa-angle-double-right me-1 ms-3 text-muted"></i>${row.sub}</div>` : '';
 
-        // 🌟 ส่งแค่ค่า ID เข้าฟังก์ชัน ป้องกัน Error เครื่องหมายคำพูดตีกัน
-        let safeId = String(row.id).replace(/'/g, "\\'");
+            let s = String(row.status || '').trim().toUpperCase();
+            let statusBadge = '';
+            if (s === 'ACTIVE') statusBadge = '<span class="badge bg-success">ACTIVE</span>';
+            else if (s === 'INACTIVE') statusBadge = '<span class="badge bg-secondary">INACTIVE</span>';
+            else if (s === 'REFUNDED') statusBadge = '<span class="badge bg-danger">REFUNDED</span>';
+            else statusBadge = `<span class="badge bg-dark">${s || 'N/A'}</span>`;
 
-        let tr = `
+            // 🌟 ส่งแค่ค่า ID เข้าฟังก์ชัน ป้องกัน Error เครื่องหมายคำพูดตีกัน
+            let safeId = String(row.id).replace(/'/g, "\\'");
+
+            let tr = `
             <tr>
                 <td class="text-center align-middle">
                     <input class="form-check-input row-checkbox" type="checkbox" value="${row.id}" onchange="checkBulkActionStatus()">
@@ -77,202 +77,206 @@ function renderMasterPlanTable(data) {
                     ${actHTML}
                     ${subHTML}
                 </td>
-                <td class="text-end text-dark align-middle">${Number(row.alloc || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                <td class="text-end text-secondary align-middle">${Number(row.spent || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                <td class="text-end text-secondary align-middle">${Number(row.loan || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                <td class="text-end text-primary fw-bold fs-6 align-middle bg-primary bg-opacity-10">${Number(row.balance || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                <td class="text-end text-dark align-middle">${Number(row.alloc || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td class="text-end text-secondary align-middle">${Number(row.spent || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td class="text-end text-secondary align-middle">${Number(row.loan || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td class="text-end text-primary fw-bold fs-6 align-middle bg-primary bg-opacity-10">${Number(row.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                 <td class="text-center align-middle">${statusBadge}</td>
                 <td class="text-center align-middle">
                     <button class="btn btn-sm btn-outline-primary rounded-pill shadow-sm" onclick="editMasterPlan('${safeId}')"><i class="fas fa-edit"></i></button>
                 </td>
             </tr>
         `;
-        tbody.append(tr);
-    });
+            tbody.append(tr);
+        });
 
-    dtMasterPlan = $('#tableMasterPlan').DataTable({
-        pageLength: 25,
-        ordering: true,
-        columnDefs: [{ targets: [0, 8], orderable: false }], 
-        language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/th.json' }
-    });
-}
+        dtMasterPlan = $('#tableMasterPlan').DataTable({
+            pageLength: 25,
+            ordering: true,
+            columnDefs: [{ targets: [0, 8], orderable: false }],
+            language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/th.json' }
+        });
+    }
 
-// 3️⃣ อัปเดต Summary Cards
-function updateMasterPlanSummary(data) {
-    let sumMoph = 0;       
-    let sumNonMoph = 0;    
-    let sumLoeiFund = 0;   
-    
-    data.forEach(row => {
-        let bal = Number(row.balance) || 0;
-        if (row.type === 'MOPH' || row.type === 'สป.สธ.' || row.source === 'สป.สธ.') sumMoph += bal;
-        else {
-            sumNonMoph += bal; 
-            if (row.source === 'เงินบำรุง สสจ.เลย') sumLoeiFund += bal;
-        }
-    });
+    // 3️⃣ อัปเดต Summary Cards
+    function updateMasterPlanSummary(data) {
+        let sumMoph = 0;
+        let sumNonMoph = 0;
+        let sumLoeiFund = 0;
 
-    $('#sum-moph-bal').text(sumMoph.toLocaleString('en-US', {minimumFractionDigits: 2}));
-    $('#sum-nonmoph-bal').text(sumNonMoph.toLocaleString('en-US', {minimumFractionDigits: 2}));
-    $('#sum-loeifund-bal').text(sumLoeiFund.toLocaleString('en-US', {minimumFractionDigits: 2}));
-    $('#sum-total-bal').text((sumMoph + sumNonMoph).toLocaleString('en-US', {minimumFractionDigits: 2}));
-}
+        data.forEach(row => {
+            let bal = Number(row.balance) || 0;
+            if (row.type === 'MOPH' || row.type === 'สป.สธ.' || row.source === 'สป.สธ.') sumMoph += bal;
+            else {
+                sumNonMoph += bal;
+                if (row.source === 'เงินบำรุง สสจ.เลย') sumLoeiFund += bal;
+            }
+        });
 
-// 4️⃣ ระบบกรองข้อมูล (Filter)
-function runMasterPlanFilter() {
-    let fOrder = $('#filter-order').val();
-    let fDept = $('#filter-dept').val();
-    let fType = $('#filter-type').val();     
-    let fSource = $('#filter-source').val(); 
-    let fProj = $('#filter-proj').val();
-    let fAct = $('#filter-act').val();
-    let fSub = $('#filter-sub').val();
-    let fStatus = $('#filter-status').val();
+        $('#sum-moph-bal').text(sumMoph.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+        $('#sum-nonmoph-bal').text(sumNonMoph.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+        $('#sum-loeifund-bal').text(sumLoeiFund.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+        $('#sum-total-bal').text((sumMoph + sumNonMoph).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+    }
 
-    let filteredData = globalMasterPlanData.filter(row => {
-        let match = true;
-        if (fOrder && row.order !== fOrder) match = false;
-        if (fDept && row.dept !== fDept) match = false;
-        if (fType && row.type !== fType) match = false;
-        if (fSource && row.source !== fSource) match = false;
-        if (fProj && row.proj !== fProj) match = false;
-        if (fAct && row.act !== fAct) match = false;
-        if (fSub && row.sub !== fSub) match = false;
-        if (fStatus && String(row.status).trim().toUpperCase() !== fStatus) match = false;
-        return match;
-    });
+    // 4️⃣ ระบบกรองข้อมูล (Filter)
+    function runMasterPlanFilter() {
+        let fOrder = $('#filter-order').val();
+        let fDept = $('#filter-dept').val();
+        let fType = $('#filter-type').val();
+        let fSource = $('#filter-source').val();
+        let fProj = $('#filter-proj').val();
+        let fAct = $('#filter-act').val();
+        let fSub = $('#filter-sub').val();
+        let fStatus = $('#filter-status').val();
 
-    renderMasterPlanTable(filteredData);
-    updateMasterPlanSummary(filteredData); 
-}
+        let filteredData = globalMasterPlanData.filter(row => {
+            let match = true;
+            if (fOrder && String(row.order) !== String(fOrder)) match = false;
+            if (fDept && row.dept !== fDept) match = false;
+            if (fType && row.type !== fType) match = false;
+            if (fSource && row.source !== fSource) match = false;
+            if (fProj && row.proj !== fProj) match = false;
+            if (fAct && row.act !== fAct) match = false;
+            if (fSub && row.sub !== fSub) match = false;
+            if (fStatus && String(row.status).trim().toUpperCase() !== fStatus) match = false;
+            return match;
+        });
 
-// 5️⃣ ล้างค่าตัวกรอง
-function resetMasterPlanFilter() {
-    // ล้างค่าตัวกรองอิสระ
-    $('#filter-dept, #filter-type, #filter-source').val('').trigger('change.select2');
-    $('#filter-status').val('');
-    
-    // ล้างค่าลำดับโครงการ (Level 1)
-    $('#filter-order').val('').trigger('change.select2');
-    
-    // 🌟 ปิดการใช้งาน Level 2, 3, 4 กลับเป็นสถานะเริ่มต้น (Inactive)
-    const disableAndReset = (selector) => {
-        $(selector).empty().html('<option value="">All</option>').prop('disabled', true).select2({theme: 'bootstrap-5'});
-    };
-    disableAndReset('#filter-proj');
-    disableAndReset('#filter-act');
-    disableAndReset('#filter-sub');
+        renderMasterPlanTable(filteredData);
+        updateMasterPlanSummary(filteredData);
+    }
 
-    renderMasterPlanTable(globalMasterPlanData);
-    updateMasterPlanSummary(globalMasterPlanData);
-}
+    // 5️⃣ ล้างค่าตัวกรอง
+    function resetMasterPlanFilter() {
+        // ล้างค่าตัวกรองอิสระ
+        $('#filter-dept, #filter-type, #filter-source').val('').trigger('change.select2');
+        $('#filter-status').val('');
 
-// 6️⃣ สร้างตัวเลือก Dropdown (Select2) แบบ Cascading (ทำงานเป็นทอดๆ)
-function populateMasterPlanFilters(data) {
-    // ฟังก์ชันช่วยดึงค่าที่ไม่ซ้ำกัน
-    let getUnique = (dataArray, key) => [...new Set(dataArray.map(item => item[key]).filter(Boolean))].sort();
-    let makeOptions = (arr) => '<option value="">All</option>' + arr.map(x => `<option value="${x}">${x}</option>`).join('');
-    
-    // ฟังก์ชันช่วยรีเซ็ตและล็อค Dropdown (Inactive)
-    const disableAndReset = (selector) => {
-        $(selector).empty().html('<option value="">All</option>').prop('disabled', true).select2({theme: 'bootstrap-5'});
-    };
+        // ล้างค่าลำดับโครงการ (Level 1)
+        $('#filter-order').val('').trigger('change.select2');
 
-    // ---------------------------------------------------------
-    // 📌 ขั้นตอนที่ 1: ตั้งค่าเริ่มต้นตอนโหลดหน้าเว็บ
-    // ---------------------------------------------------------
-    // กลุ่มอิสระ (เปิดใช้งานตลอด)
-    $('#filter-dept').empty().html(makeOptions(getUnique(data, 'dept'))).prop('disabled', false).select2({theme: 'bootstrap-5'});
-    $('#filter-type').empty().html(makeOptions(getUnique(data, 'type'))).prop('disabled', false).select2({theme: 'bootstrap-5'});
-    $('#filter-source').empty().html(makeOptions(getUnique(data, 'source'))).prop('disabled', false).select2({theme: 'bootstrap-5'});
-    
-    // กลุ่ม Cascading Level 1 (เปิดใช้งานตลอด)
-    $('#filter-order').empty().html(makeOptions(getUnique(data, 'order'))).prop('disabled', false).select2({theme: 'bootstrap-5'});
-
-    // ล็อค Level 2, 3, 4 ตอนเริ่มต้น
-    disableAndReset('#filter-proj');
-    disableAndReset('#filter-act');
-    disableAndReset('#filter-sub');
-
-    // ---------------------------------------------------------
-    // 📌 ขั้นตอนที่ 2: Event Listeners รอรับคำสั่งเมื่อผู้ใช้เลือก Dropdown
-    // ---------------------------------------------------------
-    
-    // 🌟 เมื่อเลือก "ลำดับโครงการ" -> ปลดล็อค "ชื่อโครงการ"
-    $('#filter-order').off('change').on('change', function() {
-        let selectedOrder = $(this).val();
-        
-        // ล็อคระดับล่างทิ้งเสมอ เผื่อผู้ใช้เปลี่ยนใจเลือกลำดับใหม่
+        // 🌟 ปิดการใช้งาน Level 2, 3, 4 กลับเป็นสถานะเริ่มต้น (Inactive)
+        const disableAndReset = (selector) => {
+            $(selector).empty().html('<option value="">All</option>').prop('disabled', true).select2({ theme: 'bootstrap-5' });
+        };
+        disableAndReset('#filter-proj');
         disableAndReset('#filter-act');
         disableAndReset('#filter-sub');
 
-        if (selectedOrder) {
-            // กรองหาเฉพาะโครงการที่ตรงกับ "ลำดับ" ที่เลือก
-            let filteredProj = data.filter(r => r.order === selectedOrder);
-            $('#filter-proj').empty().html(makeOptions(getUnique(filteredProj, 'proj'))).prop('disabled', false).select2({theme: 'bootstrap-5'});
-        } else {
-            // ถ้ากลับไปเลือก All ให้ล็อคระดับล่าง
-            disableAndReset('#filter-proj');
-        }
-    });
-
-    // 🌟 เมื่อเลือก "ชื่อโครงการ" -> ปลดล็อค "กิจกรรมหลัก"
-    $('#filter-proj').off('change').on('change', function() {
-        let selectedOrder = $('#filter-order').val();
-        let selectedProj = $(this).val();
-        
-        disableAndReset('#filter-sub'); // ล็อคระดับล่างสุดเสมอ
-
-        if (selectedProj) {
-            // กรองหาเฉพาะกิจกรรมหลัก ที่ตรงกับ ลำดับ+โครงการ ที่เลือก
-            let filteredAct = data.filter(r => r.order === selectedOrder && r.proj === selectedProj);
-            $('#filter-act').empty().html(makeOptions(getUnique(filteredAct, 'act'))).prop('disabled', false).select2({theme: 'bootstrap-5'});
-        } else {
-            disableAndReset('#filter-act');
-        }
-    });
-
-    // 🌟 เมื่อเลือก "กิจกรรมหลัก" -> ปลดล็อค "กิจกรรมย่อย"
-    $('#filter-act').off('change').on('change', function() {
-        let selectedOrder = $('#filter-order').val();
-        let selectedProj = $('#filter-proj').val();
-        let selectedAct = $(this).val();
-
-        if (selectedAct) {
-            // กรองหาเฉพาะกิจกรรมย่อย ที่ตรงกับ ลำดับ+โครงการ+กิจกรรมหลัก
-            let filteredSub = data.filter(r => r.order === selectedOrder && r.proj === selectedProj && r.act === selectedAct);
-            $('#filter-sub').empty().html(makeOptions(getUnique(filteredSub, 'sub'))).prop('disabled', false).select2({theme: 'bootstrap-5'});
-        } else {
-            disableAndReset('#filter-sub');
-        }
-    });
-}
-
-// 7️⃣ ระบบ Checkbox (Bulk Action)
-function toggleAllMasterPlanCheckboxes(source) {
-    $('.row-checkbox').prop('checked', source.checked);
-    checkBulkActionStatus();
-}
-
-function checkBulkActionStatus() {
-    let selected = $('.row-checkbox:checked').length;
-    $('#selected-count').text(selected);
-    if(selected > 0) $('#bulk-action-bar').removeClass('d-none').addClass('d-flex');
-    else {
-        $('#bulk-action-bar').removeClass('d-flex').addClass('d-none');
-        $('#selectAllCheckbox').prop('checked', false);
+        renderMasterPlanTable(globalMasterPlanData);
+        updateMasterPlanSummary(globalMasterPlanData);
     }
-}
 
-function openBulkUpdateModal() {
-    let selectedIds = [];
-    $('.row-checkbox:checked').each(function() { selectedIds.push($(this).val()); });
-    if(selectedIds.length === 0) return;
+    // 6️⃣ สร้างตัวเลือก Dropdown (Select2) แบบ Cascading (ทำงานเป็นทอดๆ)
+    function populateMasterPlanFilters(data) {
+        // ฟังก์ชันช่วยดึงค่าที่ไม่ซ้ำกัน
+        let getUnique = (dataArray, key) => [...new Set(dataArray.map(item => String(item[key] ?? '')).filter(Boolean))].sort((a, b) => {
+            let na = Number(a), nb = Number(b);
+            return (!isNaN(na) && !isNaN(nb)) ? na - nb : a.localeCompare(b);
+        });
+        let makeOptions = (arr) => '<option value="">All</option>' + arr.map(x => `<option value="${x}">${x}</option>`).join('');
 
-    Swal.fire({
-        title: 'เปลี่ยนสถานะหลายรายการ',
-        html: `
+        // ฟังก์ชันช่วยรีเซ็ตและล็อค Dropdown (Inactive)
+        const disableAndReset = (selector) => {
+            $(selector).empty().html('<option value="">All</option>').prop('disabled', true).select2({ theme: 'bootstrap-5' });
+        };
+
+        // ---------------------------------------------------------
+        // 📌 ขั้นตอนที่ 1: ตั้งค่าเริ่มต้นตอนโหลดหน้าเว็บ
+        // ---------------------------------------------------------
+        // กลุ่มอิสระ (เปิดใช้งานตลอด)
+        $('#filter-dept').empty().html(makeOptions(getUnique(data, 'dept'))).prop('disabled', false).select2({ theme: 'bootstrap-5' });
+        $('#filter-type').empty().html(makeOptions(getUnique(data, 'type'))).prop('disabled', false).select2({ theme: 'bootstrap-5' });
+        $('#filter-source').empty().html(makeOptions(getUnique(data, 'source'))).prop('disabled', false).select2({ theme: 'bootstrap-5' });
+
+        // กลุ่ม Cascading Level 1 (เปิดใช้งานตลอด)
+        $('#filter-order').empty().html(makeOptions(getUnique(data, 'order'))).prop('disabled', false).select2({ theme: 'bootstrap-5' });
+
+        // ล็อค Level 2, 3, 4 ตอนเริ่มต้น
+        disableAndReset('#filter-proj');
+        disableAndReset('#filter-act');
+        disableAndReset('#filter-sub');
+
+        // ---------------------------------------------------------
+        // 📌 ขั้นตอนที่ 2: Event Listeners รอรับคำสั่งเมื่อผู้ใช้เลือก Dropdown
+        // ---------------------------------------------------------
+
+        // 🌟 เมื่อเลือก "ลำดับโครงการ" -> ปลดล็อค "ชื่อโครงการ"
+        // ⚠️ ใช้ namespace .cascading เพื่อไม่ไปลบ event handler ภายในของ Select2 (change.select2)
+        $('#filter-order').off('change.cascading').on('change.cascading', function () {
+            let selectedOrder = $(this).val();
+
+            // ล็อคระดับล่างทิ้งเสมอ เผื่อผู้ใช้เปลี่ยนใจเลือกลำดับใหม่
+            disableAndReset('#filter-act');
+            disableAndReset('#filter-sub');
+
+            if (selectedOrder) {
+                // กรองหาเฉพาะโครงการที่ตรงกับ "ลำดับ" ที่เลือก
+                let filteredProj = data.filter(r => String(r.order) === String(selectedOrder));
+                $('#filter-proj').empty().html(makeOptions(getUnique(filteredProj, 'proj'))).prop('disabled', false).select2({ theme: 'bootstrap-5' });
+            } else {
+                // ถ้ากลับไปเลือก All ให้ล็อคระดับล่าง
+                disableAndReset('#filter-proj');
+            }
+        });
+
+        // 🌟 เมื่อเลือก "ชื่อโครงการ" -> ปลดล็อค "กิจกรรมหลัก"
+        $('#filter-proj').off('change.cascading').on('change.cascading', function () {
+            let selectedOrder = $('#filter-order').val();
+            let selectedProj = $(this).val();
+
+            disableAndReset('#filter-sub'); // ล็อคระดับล่างสุดเสมอ
+
+            if (selectedProj) {
+                // กรองหาเฉพาะกิจกรรมหลัก ที่ตรงกับ ลำดับ+โครงการ ที่เลือก
+                let filteredAct = data.filter(r => String(r.order) === String(selectedOrder) && r.proj === selectedProj);
+                $('#filter-act').empty().html(makeOptions(getUnique(filteredAct, 'act'))).prop('disabled', false).select2({ theme: 'bootstrap-5' });
+            } else {
+                disableAndReset('#filter-act');
+            }
+        });
+
+        // 🌟 เมื่อเลือก "กิจกรรมหลัก" -> ปลดล็อค "กิจกรรมย่อย"
+        $('#filter-act').off('change.cascading').on('change.cascading', function () {
+            let selectedOrder = $('#filter-order').val();
+            let selectedProj = $('#filter-proj').val();
+            let selectedAct = $(this).val();
+
+            if (selectedAct) {
+                // กรองหาเฉพาะกิจกรรมย่อย ที่ตรงกับ ลำดับ+โครงการ+กิจกรรมหลัก
+                let filteredSub = data.filter(r => String(r.order) === String(selectedOrder) && r.proj === selectedProj && r.act === selectedAct);
+                $('#filter-sub').empty().html(makeOptions(getUnique(filteredSub, 'sub'))).prop('disabled', false).select2({ theme: 'bootstrap-5' });
+            } else {
+                disableAndReset('#filter-sub');
+            }
+        });
+    }
+
+    // 7️⃣ ระบบ Checkbox (Bulk Action)
+    function toggleAllMasterPlanCheckboxes(source) {
+        $('.row-checkbox').prop('checked', source.checked);
+        checkBulkActionStatus();
+    }
+
+    function checkBulkActionStatus() {
+        let selected = $('.row-checkbox:checked').length;
+        $('#selected-count').text(selected);
+        if (selected > 0) $('#bulk-action-bar').removeClass('d-none').addClass('d-flex');
+        else {
+            $('#bulk-action-bar').removeClass('d-flex').addClass('d-none');
+            $('#selectAllCheckbox').prop('checked', false);
+        }
+    }
+
+    function openBulkUpdateModal() {
+        let selectedIds = [];
+        $('.row-checkbox:checked').each(function () { selectedIds.push($(this).val()); });
+        if (selectedIds.length === 0) return;
+
+        Swal.fire({
+            title: 'เปลี่ยนสถานะหลายรายการ',
+            html: `
             <div class="mb-3 text-start">
                 <label class="form-label fw-bold">เลือกสถานะใหม่:</label>
                 <select id="swal-bulk-status" class="form-select border-primary fw-bold">
@@ -286,361 +290,361 @@ function openBulkUpdateModal() {
                 <input type="text" id="swal-bulk-remark" class="form-control" placeholder="ระบุสาเหตุการเปลี่ยนสถานะ...">
             </div>
         `,
-        showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-save me-1"></i> ยืนยัน',
-        cancelButtonText: 'ยกเลิก',
-        preConfirm: () => {
-            return { status: document.getElementById('swal-bulk-status').value, remark: document.getElementById('swal-bulk-remark').value }
-        }
-    }).then((result) => {
-        if (result.isConfirmed) submitBulkUpdate(selectedIds, result.value.status, result.value.remark);
-    });
-}
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-save me-1"></i> ยืนยัน',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: () => {
+                return { status: document.getElementById('swal-bulk-status').value, remark: document.getElementById('swal-bulk-remark').value }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) submitBulkUpdate(selectedIds, result.value.status, result.value.remark);
+        });
+    }
 
-function submitBulkUpdate(ids, newStatus, remark) {
-    Swal.fire({ title: 'กำลังปรับปรุงข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-    google.script.run.withSuccessHandler(function(response) {
-        if(response && response.success) {
-            Swal.fire('สำเร็จ!', `อัปเดตเรียบร้อยแล้ว`, 'success');
-            $('.row-checkbox').prop('checked', false);
-            checkBulkActionStatus();
-            loadMasterPlanData(); 
-        } else Swal.fire('ผิดพลาด', response ? response.message : 'Unknown Error', 'error');
-    }).withFailureHandler(function(error) {
-        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-    }).submitBulkUpdate(ids, newStatus, remark);
-}
+    function submitBulkUpdate(ids, newStatus, remark) {
+        Swal.fire({ title: 'กำลังปรับปรุงข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+        google.script.run.withSuccessHandler(function (response) {
+            if (response && response.success) {
+                Swal.fire('สำเร็จ!', `อัปเดตเรียบร้อยแล้ว`, 'success');
+                $('.row-checkbox').prop('checked', false);
+                checkBulkActionStatus();
+                loadMasterPlanData();
+            } else Swal.fire('ผิดพลาด', response ? response.message : 'Unknown Error', 'error');
+        }).withFailureHandler(function (error) {
+            Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        }).submitBulkUpdate(ids, newStatus, remark);
+    }
 
-// ==========================================
-// 📌 8️⃣ MODAL & EDIT FUNCTIONS (ฟื้นคืนชีพ 100%)
-// ==========================================
+    // ==========================================
+    // 📌 8️⃣ MODAL & EDIT FUNCTIONS (ฟื้นคืนชีพ 100%)
+    // ==========================================
 
-function openAddPlanModal() {
-    $('#formMasterPlan')[0].reset();
-    $('#p_id').val('');
-    $('#planModalTitle').html('<i class="fas fa-plus-circle me-2"></i>เพิ่มโครงการใหม่');
-    $('#modalMasterPlan').modal('show');
-}
+    function openAddPlanModal() {
+        $('#formMasterPlan')[0].reset();
+        $('#p_id').val('');
+        $('#planModalTitle').html('<i class="fas fa-plus-circle me-2"></i>เพิ่มโครงการใหม่');
+        $('#modalMasterPlan').modal('show');
+    }
 
-// 🌟 ส่งเป็น ID มารับค่า เพื่อความปลอดภัยจากการโดนเครื่องหมายคำพูด (Quote) ตัดคำ
-function editMasterPlan(id) {
-    let row = globalMasterPlanData.find(r => String(r.id) === String(id));
-    if(!row) return;
+    // 🌟 ส่งเป็น ID มารับค่า เพื่อความปลอดภัยจากการโดนเครื่องหมายคำพูด (Quote) ตัดคำ
+    function editMasterPlan(id) {
+        let row = globalMasterPlanData.find(r => String(r.id) === String(id));
+        if (!row) return;
 
-    $('#planModalTitle').html('<i class="fas fa-edit me-2"></i>แก้ไขข้อมูลโครงการ');
-    $('#p_id').val(row.id);
-    $('#p_order').val(row.order);
-    $('#p_dept').val(row.dept);
-    $('#p_source').val(row.source);
-    $('#p_proj').val(row.proj);
-    $('#p_act').val(row.act);
-    $('#p_sub').val(row.sub);
-    $('#p_type').val(row.type);
-    $('#p_alloc').val(row.alloc);
-    
-    let s = String(row.status || '').trim().toUpperCase();
-    if(['ACTIVE', 'INACTIVE', 'REFUNDED'].includes(s)) $('#p_status').val(s);
-    else $('#p_status').val('ACTIVE'); 
-    
-    $('#p_remark').val(row.remark || '');
-    $('#modalMasterPlan').modal('show');
-}
+        $('#planModalTitle').html('<i class="fas fa-edit me-2"></i>แก้ไขข้อมูลโครงการ');
+        $('#p_id').val(row.id);
+        $('#p_order').val(row.order);
+        $('#p_dept').val(row.dept);
+        $('#p_source').val(row.source);
+        $('#p_proj').val(row.proj);
+        $('#p_act').val(row.act);
+        $('#p_sub').val(row.sub);
+        $('#p_type').val(row.type);
+        $('#p_alloc').val(row.alloc);
 
-function submitMasterPlan(e) {
-    e.preventDefault();
-    let payload = {
-        id: $('#p_id').val(),
-        order: $('#p_order').val(),
-        dept: $('#p_dept').val(),
-        source: $('#p_source').val(),
-        proj: $('#p_proj').val(),
-        act: $('#p_act').val(),
-        sub: $('#p_sub').val(),
-        type: $('#p_type').val(),
-        alloc: $('#p_alloc').val(),
-        status: $('#p_status').val(),
-        remark: $('#p_remark').val()
-    };
+        let s = String(row.status || '').trim().toUpperCase();
+        if (['ACTIVE', 'INACTIVE', 'REFUNDED'].includes(s)) $('#p_status').val(s);
+        else $('#p_status').val('ACTIVE');
 
-    Swal.fire({ title: 'กำลังบันทึก...', text: 'กรุณารอสักครู่', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-    
-    // ⚠️ ตรงนี้คุณ Bird ต้องมีฟังก์ชัน saveMasterPlan ฝั่ง Code.gs ด้วยนะครับ
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(function(res) {
+        $('#p_remark').val(row.remark || '');
+        $('#modalMasterPlan').modal('show');
+    }
+
+    function submitMasterPlan(e) {
+        e.preventDefault();
+        let payload = {
+            id: $('#p_id').val(),
+            order: $('#p_order').val(),
+            dept: $('#p_dept').val(),
+            source: $('#p_source').val(),
+            proj: $('#p_proj').val(),
+            act: $('#p_act').val(),
+            sub: $('#p_sub').val(),
+            type: $('#p_type').val(),
+            alloc: $('#p_alloc').val(),
+            status: $('#p_status').val(),
+            remark: $('#p_remark').val()
+        };
+
+        Swal.fire({ title: 'กำลังบันทึก...', text: 'กรุณารอสักครู่', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        // ⚠️ ตรงนี้คุณ Bird ต้องมีฟังก์ชัน saveMasterPlan ฝั่ง Code.gs ด้วยนะครับ
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run.withSuccessHandler(function (res) {
+                $('#modalMasterPlan').modal('hide');
+                Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success');
+                loadMasterPlanData();
+            }).withFailureHandler(function (err) {
+                Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกได้: ' + err.message, 'error');
+            }).saveMasterPlan(payload);
+        } else {
+            Swal.fire('จำลองสำเร็จ', 'บันทึกข้อมูลแล้ว', 'success');
             $('#modalMasterPlan').modal('hide');
-            Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success');
-            loadMasterPlanData(); 
-        }).withFailureHandler(function(err) {
-            Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกได้: ' + err.message, 'error');
-        }).saveMasterPlan(payload); 
-    } else {
-        Swal.fire('จำลองสำเร็จ', 'บันทึกข้อมูลแล้ว', 'success');
-        $('#modalMasterPlan').modal('hide');
-    }
-}
-
-// ==========================================
-// 📌 ระบบตั้งค่า Modal & โหลด Dropdown อัตโนมัติ
-// ==========================================
-$(document).ready(function() {
-    // โหลดข้อมูล Dropdown จาก 3 ชีต ทันทีที่เปิดเว็บ
-    google.script.run.withSuccessHandler(function(res) {
-        if(res.error) return console.error(res.error);
-        
-        let makeOpts = arr => '<option value="">กรุณาเลือก...</option>' + arr.map(x => `<option value="${x}">${x}</option>`).join('');
-        $('#p_dept').html(makeOpts(res.depts));
-        $('#p_type').html(makeOpts(res.types));
-        $('#p_plan').html(makeOpts(res.plans));
-        
-        // แปลงร่าง Select ธรรมดาให้เป็น Select2 (สำคัญ: ต้องใช้ dropdownParent ไม่งั้นใน Modal จะคลิกไม่ได้!)
-        $('.select2-modal').select2({
-            theme: 'bootstrap-5',
-            dropdownParent: $('#modalMasterPlan')
-        });
-        
-        // ตั้งค่าเฉพาะช่องเลือกเดือน ให้ขึ้น Placeholder สวยๆ
-        $('#p_months').select2({
-            theme: 'bootstrap-5',
-            dropdownParent: $('#modalMasterPlan'),
-            placeholder: "เลือกเดือน (คลิกเพื่อเลือกเพิ่มได้)",
-            allowClear: true
-        });
-    }).getModalDropdownData();
-});
-
-// เปิด Modal เพิ่มข้อมูลใหม่ (ล้างค่าทั้งหมด)
-function openAddPlanModal() {
-    $('#formMasterPlan')[0].reset();
-    $('#p_id').val('');
-    // ล้างค่า Select2 ทั้งหมด
-    $('.select2-modal').val(null).trigger('change'); 
-    
-    $('#planModalTitle').html('<i class="fas fa-plus-circle me-2"></i>เพิ่มโครงการใหม่');
-    $('#modalMasterPlan').modal('show');
-}
-
-// ⚠️ รวบรวมข้อมูลตอนกด "บันทึก"
-function submitMasterPlan(e) {
-    e.preventDefault();
-    
-    // ดึงค่าเดือนที่เลือกหลายๆ อันมารวมกันเป็น String (เช่น "ต.ค., พ.ย.")
-    let selectedMonths = $('#p_months').val();
-    let monthsString = selectedMonths ? selectedMonths.join(', ') : '';
-
-    let payload = {
-        id: $('#p_id').val(),
-        order: $('#p_order').val(),
-        dept: $('#p_dept').val(),         // มาจาก Dropdown c_deparment
-        type: $('#p_type').val(),         // มาจาก Dropdown c_budget_type
-        source: $('#p_source').val(),
-        plan: $('#p_plan').val(),         // มาจาก Dropdown c_plan
-        proj: $('#p_proj').val(),
-        act: $('#p_act').val(),
-        sub: $('#p_sub').val(),
-        approve: $('#p_approve').val(),   // อนุมัติตามแผน
-        alloc: $('#p_alloc').val(),
-        months: monthsString,             // ระยะเวลา (เดือน)
-        status: $('#p_status').val(),
-        remark: $('#p_remark').val()
-    };
-
-    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-    
-    if (typeof google !== 'undefined') {
-        google.script.run.withSuccessHandler(function(res) {
-            $('#modalMasterPlan').modal('hide');
-            Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success');
-            loadMasterPlanData(); 
-        }).withFailureHandler(function(err) {
-            Swal.fire('ผิดพลาด', err.message, 'error');
-        }).saveMasterPlan(payload); // ⚠️ คุณ Bird ต้องมีฟังก์ชันนี้รับค่าใน Code.gs นะครับ
-    }
-}
-
-// ==========================================
-// 📌 ฟังก์ชันดาวน์โหลด Template สำหรับนำเข้าข้อมูล
-// ==========================================
-function downloadTemplate() {
-    // 1. กำหนดหัวตาราง 14 คอลัมน์ ตาม Requirement
-    const headers = [
-        "รหัสโครงการ", "ปีงบประมาณ", "กลุ่มงาน/งาน", "โครงการ", 
-        "กิจกรรมหลัก", "กิจกรรมย่อย", "ประเภทงบ", "แหล่งงบประมาณ", 
-        "ผู้รับผิดชอบ", "รหัสงบประมาณ", "รหัสกิจกรรม", "อนุมัติตามแผน", 
-        "จัดสรร", "เดือนที่ดำเนินการ"
-    ];
-
-    // 2. ใส่ข้อมูลตัวอย่าง (Dummy Data) 1 แถว เพื่อเป็นไกด์ไลน์ให้ผู้ใช้งาน
-    const sampleData = [
-        "(ระบบสร้างให้อัตโนมัติ)", "2569", "กลุ่มงานบริหารทั่วไป", "โครงการตัวอย่างการนำเข้าข้อมูล", 
-        "กิจกรรมหลักที่ 1", "กิจกรรมย่อยที่ 1.1", "สป.สธ.", "งบประมาณ สป.", 
-        "นายแพทย์ทดสอบ นามสมมติ", "00112233", "A01", 150000, 
-        150000, "ต.ค., พ.ย., ธ.ค."
-    ];
-
-    // 3. รวมหัวตารางและข้อมูลเข้าด้วยกัน
-    const worksheetData = [headers, sampleData];
-
-    // 4. แปลงข้อมูลเป็น Worksheet
-    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
-    
-    // ปรับแต่งความกว้างของคอลัมน์ให้สวยงาม (Auto Width นิดหน่อย)
-    const wscols = headers.map(h => ({wch: Math.max(h.length + 8, 15)}));
-    ws['!cols'] = wscols;
-
-    // 5. สร้าง Workbook และจับยัด Worksheet ลงไป
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template_Import");
-
-    // 6. สั่งดาวน์โหลดไฟล์ออกมาเป็น .xlsx
-    XLSX.writeFile(wb, "BMD_Import_Template.xlsx");
-}
-
-// ==========================================
-// 📌 ระบบนำเข้าข้อมูล (Bulk Import V.1)
-// ==========================================
-let validImportData = []; // เก็บข้อมูลที่ผ่านการตรวจสอบ
-
-function openImportModal() {
-    $('#importFile').val('');
-    $('#previewContainer').addClass('d-none');
-    $('#btnConfirmImport').prop('disabled', true);
-    $('#importErrorMsg').text('');
-    validImportData = [];
-    new bootstrap.Modal(document.getElementById('modalImportPlan')).show();
-}
-
-// เมื่อผู้ใช้เลือกไฟล์ ให้ประมวลผลทันที
-document.getElementById('importFile').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            // แปลง Excel เป็น JSON Array
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet, {defval: ""});
-            validateAndPreviewData(jsonData);
-        } catch (err) {
-            $('#importErrorMsg').text('ไม่สามารถอ่านไฟล์ได้ โปรดตรวจสอบว่าไฟล์ไม่เสีย');
         }
-    };
-    reader.readAsArrayBuffer(file);
-});
-
-// ฟังก์ชันตรวจสอบและแสดง Preview
-function validateAndPreviewData(data) {
-    if(data.length === 0) {
-        $('#importErrorMsg').text('ไฟล์ว่างเปล่า ไม่มีข้อมูลในตาราง');
-        return;
     }
 
-    const headers = [
-        "รหัสโครงการ", "ปีงบประมาณ", "กลุ่มงาน/งาน", "โครงการ", 
-        "กิจกรรมหลัก", "กิจกรรมย่อย", "ประเภทงบ", "แหล่งงบประมาณ", 
-        "ผู้รับผิดชอบ", "รหัสงบประมาณ", "รหัสกิจกรรม", "อนุมัติตามแผน", 
-        "จัดสรร", "เดือนที่ดำเนินการ"
-    ];
+    // ==========================================
+    // 📌 ระบบตั้งค่า Modal & โหลด Dropdown อัตโนมัติ
+    // ==========================================
+    $(document).ready(function () {
+        // โหลดข้อมูล Dropdown จาก 3 ชีต ทันทีที่เปิดเว็บ
+        google.script.run.withSuccessHandler(function (res) {
+            if (res.error) return console.error(res.error);
 
-    // วาดหัวตาราง
-    let headHtml = '<tr><th class="text-center">#</th>';
-    headers.forEach(h => headHtml += `<th>${h}</th>`);
-    headHtml += '</tr>';
-    $('#previewHead').html(headHtml);
+            let makeOpts = arr => '<option value="">กรุณาเลือก...</option>' + arr.map(x => `<option value="${x}">${x}</option>`).join('');
+            $('#p_dept').html(makeOpts(res.depts));
+            $('#p_type').html(makeOpts(res.types));
+            $('#p_plan').html(makeOpts(res.plans));
 
-    let bodyHtml = '';
-    let errorCount = 0;
-    validImportData = []; // เคลียร์ของเก่า
+            // แปลงร่าง Select ธรรมดาให้เป็น Select2 (สำคัญ: ต้องใช้ dropdownParent ไม่งั้นใน Modal จะคลิกไม่ได้!)
+            $('.select2-modal').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#modalMasterPlan')
+            });
 
-    // วนลูปเช็คข้อมูลทีละแถว
-    data.forEach((row, index) => {
-        let isRowError = false;
-        let trHtml = '<tr><td class="text-center bg-light text-muted">' + (index + 1) + '</td>';
-        
-        // กรองแถวที่ว่างเปล่าออก (บางที Excel มีแถวว่างแถมมา)
-        if(!row['โครงการ'] && !row['กลุ่มงาน/งาน']) return; 
-
-        headers.forEach(col => {
-            let val = row[col] !== undefined ? row[col] : "";
-            let tdClass = "";
-            let errorMsg = "";
-
-            // --- กฎการตรวจสอบ (Validation Rules) ---
-            // 1. ช่องที่ห้ามว่าง
-            if (["ปีงบประมาณ", "กลุ่มงาน/งาน", "โครงการ", "อนุมัติตามแผน", "จัดสรร"].includes(col) && String(val).trim() === "") {
-                tdClass = "bg-danger bg-opacity-25 border-danger";
-                errorMsg = "ห้ามเป็นค่าว่าง";
-                isRowError = true;
-            }
-            // 2. ต้องเป็นตัวเลขเท่านั้น
-            if (["อนุมัติตามแผน", "จัดสรร"].includes(col) && isNaN(val)) {
-                tdClass = "bg-danger bg-opacity-25 border-danger";
-                errorMsg = "ต้องเป็นตัวเลข";
-                isRowError = true;
-            }
-
-            // นำเสนอช่องตาราง
-            if (tdClass) {
-                trHtml += `<td class="${tdClass}" title="${errorMsg}"><i class="fas fa-exclamation-circle text-danger"></i> ${val}</td>`;
-            } else {
-                trHtml += `<td>${val}</td>`;
-            }
-        });
-        trHtml += '</tr>';
-        bodyHtml += trHtml;
-
-        if(isRowError) errorCount++;
-        else validImportData.push(row); // เก็บข้อมูลที่ผ่านเข้า Array รอส่งหลังบ้าน
+            // ตั้งค่าเฉพาะช่องเลือกเดือน ให้ขึ้น Placeholder สวยๆ
+            $('#p_months').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#modalMasterPlan'),
+                placeholder: "เลือกเดือน (คลิกเพื่อเลือกเพิ่มได้)",
+                allowClear: true
+            });
+        }).getModalDropdownData();
     });
 
-    $('#previewBody').html(bodyHtml);
-    $('#previewContainer').removeClass('d-none');
+    // เปิด Modal เพิ่มข้อมูลใหม่ (ล้างค่าทั้งหมด)
+    function openAddPlanModal() {
+        $('#formMasterPlan')[0].reset();
+        $('#p_id').val('');
+        // ล้างค่า Select2 ทั้งหมด
+        $('.select2-modal').val(null).trigger('change');
 
-    // สรุปผล
-    const totalRows = data.filter(r => r['โครงการ']).length;
-    if (errorCount > 0) {
-        $('#previewStatus').removeClass('bg-success').addClass('bg-danger')
-            .html(`<i class="fas fa-times-circle"></i> พบข้อผิดพลาด ${errorCount} แถว (ไม่อนุญาตให้นำเข้า)`);
+        $('#planModalTitle').html('<i class="fas fa-plus-circle me-2"></i>เพิ่มโครงการใหม่');
+        $('#modalMasterPlan').modal('show');
+    }
+
+    // ⚠️ รวบรวมข้อมูลตอนกด "บันทึก"
+    function submitMasterPlan(e) {
+        e.preventDefault();
+
+        // ดึงค่าเดือนที่เลือกหลายๆ อันมารวมกันเป็น String (เช่น "ต.ค., พ.ย.")
+        let selectedMonths = $('#p_months').val();
+        let monthsString = selectedMonths ? selectedMonths.join(', ') : '';
+
+        let payload = {
+            id: $('#p_id').val(),
+            order: $('#p_order').val(),
+            dept: $('#p_dept').val(),         // มาจาก Dropdown c_deparment
+            type: $('#p_type').val(),         // มาจาก Dropdown c_budget_type
+            source: $('#p_source').val(),
+            plan: $('#p_plan').val(),         // มาจาก Dropdown c_plan
+            proj: $('#p_proj').val(),
+            act: $('#p_act').val(),
+            sub: $('#p_sub').val(),
+            approve: $('#p_approve').val(),   // อนุมัติตามแผน
+            alloc: $('#p_alloc').val(),
+            months: monthsString,             // ระยะเวลา (เดือน)
+            status: $('#p_status').val(),
+            remark: $('#p_remark').val()
+        };
+
+        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        if (typeof google !== 'undefined') {
+            google.script.run.withSuccessHandler(function (res) {
+                $('#modalMasterPlan').modal('hide');
+                Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success');
+                loadMasterPlanData();
+            }).withFailureHandler(function (err) {
+                Swal.fire('ผิดพลาด', err.message, 'error');
+            }).saveMasterPlan(payload); // ⚠️ คุณ Bird ต้องมีฟังก์ชันนี้รับค่าใน Code.gs นะครับ
+        }
+    }
+
+    // ==========================================
+    // 📌 ฟังก์ชันดาวน์โหลด Template สำหรับนำเข้าข้อมูล
+    // ==========================================
+    function downloadTemplate() {
+        // 1. กำหนดหัวตาราง 14 คอลัมน์ ตาม Requirement
+        const headers = [
+            "รหัสโครงการ", "ปีงบประมาณ", "กลุ่มงาน/งาน", "โครงการ",
+            "กิจกรรมหลัก", "กิจกรรมย่อย", "ประเภทงบ", "แหล่งงบประมาณ",
+            "ผู้รับผิดชอบ", "รหัสงบประมาณ", "รหัสกิจกรรม", "อนุมัติตามแผน",
+            "จัดสรร", "เดือนที่ดำเนินการ"
+        ];
+
+        // 2. ใส่ข้อมูลตัวอย่าง (Dummy Data) 1 แถว เพื่อเป็นไกด์ไลน์ให้ผู้ใช้งาน
+        const sampleData = [
+            "(ระบบสร้างให้อัตโนมัติ)", "2569", "กลุ่มงานบริหารทั่วไป", "โครงการตัวอย่างการนำเข้าข้อมูล",
+            "กิจกรรมหลักที่ 1", "กิจกรรมย่อยที่ 1.1", "สป.สธ.", "งบประมาณ สป.",
+            "นายแพทย์ทดสอบ นามสมมติ", "00112233", "A01", 150000,
+            150000, "ต.ค., พ.ย., ธ.ค."
+        ];
+
+        // 3. รวมหัวตารางและข้อมูลเข้าด้วยกัน
+        const worksheetData = [headers, sampleData];
+
+        // 4. แปลงข้อมูลเป็น Worksheet
+        const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+
+        // ปรับแต่งความกว้างของคอลัมน์ให้สวยงาม (Auto Width นิดหน่อย)
+        const wscols = headers.map(h => ({ wch: Math.max(h.length + 8, 15) }));
+        ws['!cols'] = wscols;
+
+        // 5. สร้าง Workbook และจับยัด Worksheet ลงไป
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Template_Import");
+
+        // 6. สั่งดาวน์โหลดไฟล์ออกมาเป็น .xlsx
+        XLSX.writeFile(wb, "BMD_Import_Template.xlsx");
+    }
+
+    // ==========================================
+    // 📌 ระบบนำเข้าข้อมูล (Bulk Import V.1)
+    // ==========================================
+    let validImportData = []; // เก็บข้อมูลที่ผ่านการตรวจสอบ
+
+    function openImportModal() {
+        $('#importFile').val('');
+        $('#previewContainer').addClass('d-none');
         $('#btnConfirmImport').prop('disabled', true);
-        validImportData = []; // Clear array เพราะเป็น All or Nothing
-    } else {
-        $('#previewStatus').removeClass('bg-danger').addClass('bg-success')
-            .html(`<i class="fas fa-check-circle"></i> ข้อมูลถูกต้องทั้งหมด ${totalRows} แถว พร้อมนำเข้า`);
-        $('#btnConfirmImport').prop('disabled', false);
+        $('#importErrorMsg').text('');
+        validImportData = [];
+        new bootstrap.Modal(document.getElementById('modalImportPlan')).show();
     }
-}
 
-// ฟังก์ชันกดยืนยันส่งข้อมูลไปให้ Backend
-function submitImportData() {
-    if(validImportData.length === 0) return;
+    // เมื่อผู้ใช้เลือกไฟล์ ให้ประมวลผลทันที
+    document.getElementById('importFile').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    Swal.fire({
-        title: 'ยืนยันการนำเข้าข้อมูล?',
-        text: `ระบบกำลังจะนำเข้าข้อมูลจำนวน ${validImportData.length} รายการ`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#198754',
-        confirmButtonText: 'นำเข้าข้อมูล'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $('#btnConfirmImport').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...');
-            Swal.fire({ title: 'กำลังนำเข้าข้อมูล...', html: 'โปรดอย่าปิดหน้าต่างนี้', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-
-            // 🚀 เรียกใช้ฟังก์ชันใน Code.gs
-            google.script.run.withSuccessHandler(function(res) {
-                if(res.success) {
-                    $('#modalImportPlan').modal('hide');
-                    Swal.fire('สำเร็จ!', `นำเข้าข้อมูลเรียบร้อยแล้ว ${res.count} รายการ`, 'success');
-                    loadMasterPlanData(); // โหลดตารางใหม่
-                } else {
-                    Swal.fire('เกิดข้อผิดพลาด', res.message, 'error');
-                    $('#btnConfirmImport').prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i>ยืนยันการนำเข้า');
-                }
-            }).importMasterPlanBatch(validImportData);
-        }
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                // แปลง Excel เป็น JSON Array
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+                validateAndPreviewData(jsonData);
+            } catch (err) {
+                $('#importErrorMsg').text('ไม่สามารถอ่านไฟล์ได้ โปรดตรวจสอบว่าไฟล์ไม่เสีย');
+            }
+        };
+        reader.readAsArrayBuffer(file);
     });
-}
+
+    // ฟังก์ชันตรวจสอบและแสดง Preview
+    function validateAndPreviewData(data) {
+        if (data.length === 0) {
+            $('#importErrorMsg').text('ไฟล์ว่างเปล่า ไม่มีข้อมูลในตาราง');
+            return;
+        }
+
+        const headers = [
+            "รหัสโครงการ", "ปีงบประมาณ", "กลุ่มงาน/งาน", "โครงการ",
+            "กิจกรรมหลัก", "กิจกรรมย่อย", "ประเภทงบ", "แหล่งงบประมาณ",
+            "ผู้รับผิดชอบ", "รหัสงบประมาณ", "รหัสกิจกรรม", "อนุมัติตามแผน",
+            "จัดสรร", "เดือนที่ดำเนินการ"
+        ];
+
+        // วาดหัวตาราง
+        let headHtml = '<tr><th class="text-center">#</th>';
+        headers.forEach(h => headHtml += `<th>${h}</th>`);
+        headHtml += '</tr>';
+        $('#previewHead').html(headHtml);
+
+        let bodyHtml = '';
+        let errorCount = 0;
+        validImportData = []; // เคลียร์ของเก่า
+
+        // วนลูปเช็คข้อมูลทีละแถว
+        data.forEach((row, index) => {
+            let isRowError = false;
+            let trHtml = '<tr><td class="text-center bg-light text-muted">' + (index + 1) + '</td>';
+
+            // กรองแถวที่ว่างเปล่าออก (บางที Excel มีแถวว่างแถมมา)
+            if (!row['โครงการ'] && !row['กลุ่มงาน/งาน']) return;
+
+            headers.forEach(col => {
+                let val = row[col] !== undefined ? row[col] : "";
+                let tdClass = "";
+                let errorMsg = "";
+
+                // --- กฎการตรวจสอบ (Validation Rules) ---
+                // 1. ช่องที่ห้ามว่าง
+                if (["ปีงบประมาณ", "กลุ่มงาน/งาน", "โครงการ", "อนุมัติตามแผน", "จัดสรร"].includes(col) && String(val).trim() === "") {
+                    tdClass = "bg-danger bg-opacity-25 border-danger";
+                    errorMsg = "ห้ามเป็นค่าว่าง";
+                    isRowError = true;
+                }
+                // 2. ต้องเป็นตัวเลขเท่านั้น
+                if (["อนุมัติตามแผน", "จัดสรร"].includes(col) && isNaN(val)) {
+                    tdClass = "bg-danger bg-opacity-25 border-danger";
+                    errorMsg = "ต้องเป็นตัวเลข";
+                    isRowError = true;
+                }
+
+                // นำเสนอช่องตาราง
+                if (tdClass) {
+                    trHtml += `<td class="${tdClass}" title="${errorMsg}"><i class="fas fa-exclamation-circle text-danger"></i> ${val}</td>`;
+                } else {
+                    trHtml += `<td>${val}</td>`;
+                }
+            });
+            trHtml += '</tr>';
+            bodyHtml += trHtml;
+
+            if (isRowError) errorCount++;
+            else validImportData.push(row); // เก็บข้อมูลที่ผ่านเข้า Array รอส่งหลังบ้าน
+        });
+
+        $('#previewBody').html(bodyHtml);
+        $('#previewContainer').removeClass('d-none');
+
+        // สรุปผล
+        const totalRows = data.filter(r => r['โครงการ']).length;
+        if (errorCount > 0) {
+            $('#previewStatus').removeClass('bg-success').addClass('bg-danger')
+                .html(`<i class="fas fa-times-circle"></i> พบข้อผิดพลาด ${errorCount} แถว (ไม่อนุญาตให้นำเข้า)`);
+            $('#btnConfirmImport').prop('disabled', true);
+            validImportData = []; // Clear array เพราะเป็น All or Nothing
+        } else {
+            $('#previewStatus').removeClass('bg-danger').addClass('bg-success')
+                .html(`<i class="fas fa-check-circle"></i> ข้อมูลถูกต้องทั้งหมด ${totalRows} แถว พร้อมนำเข้า`);
+            $('#btnConfirmImport').prop('disabled', false);
+        }
+    }
+
+    // ฟังก์ชันกดยืนยันส่งข้อมูลไปให้ Backend
+    function submitImportData() {
+        if (validImportData.length === 0) return;
+
+        Swal.fire({
+            title: 'ยืนยันการนำเข้าข้อมูล?',
+            text: `ระบบกำลังจะนำเข้าข้อมูลจำนวน ${validImportData.length} รายการ`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            confirmButtonText: 'นำเข้าข้อมูล'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $('#btnConfirmImport').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...');
+                Swal.fire({ title: 'กำลังนำเข้าข้อมูล...', html: 'โปรดอย่าปิดหน้าต่างนี้', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+                // 🚀 เรียกใช้ฟังก์ชันใน Code.gs
+                google.script.run.withSuccessHandler(function (res) {
+                    if (res.success) {
+                        $('#modalImportPlan').modal('hide');
+                        Swal.fire('สำเร็จ!', `นำเข้าข้อมูลเรียบร้อยแล้ว ${res.count} รายการ`, 'success');
+                        loadMasterPlanData(); // โหลดตารางใหม่
+                    } else {
+                        Swal.fire('เกิดข้อผิดพลาด', res.message, 'error');
+                        $('#btnConfirmImport').prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i>ยืนยันการนำเข้า');
+                    }
+                }).importMasterPlanBatch(validImportData);
+            }
+        });
+    }
 
 </script>
