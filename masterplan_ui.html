@@ -1,9 +1,10 @@
 <div id="masterplan-page" class="page-section d-none fade-in">
-    
+
     <div class="d-flex justify-content-between align-items-center mb-4">
-      
+
         <div>
-            <h3 class="fw-bold text-dark"><i class="fas fa-project-diagram text-primary me-2"></i>ระบบจัดการแผนปฏิบัติการ</h3>
+            <h3 class="fw-bold text-dark"><i
+                    class="fas fa-project-diagram text-primary me-2"></i>ระบบจัดการแผนปฏิบัติการ</h3>
             <span class="text-muted">ตรวจสอบสถานะ, โยกงบประมาณ, และจัดการเงินส่งคืน (Refund)</span>
         </div>
 
@@ -11,7 +12,7 @@
             <button class="btn btn-success rounded-pill px-4 shadow-sm fw-bold" onclick="openImportModal()">
                 <i class="fas fa-file-excel me-2"></i>นำเข้าข้อมูล
             </button>
-            
+
             <button class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" onclick="openAddPlanModal()">
                 <i class="fas fa-plus-circle me-2"></i>เพิ่มโครงการใหม่
             </button>
@@ -24,7 +25,8 @@
             <div class="card border-0 shadow-sm h-100 bg-white border-start border-4 border-info rounded-4">
                 <div class="card-body p-3">
                     <div class="text-muted small fw-bold mb-1">สป.สธ. คงเหลือ</div>
-                    <h4 class="fw-bold text-info mb-0" id="sum-moph-bal"><i class="fas fa-spinner fa-spin fa-sm"></i></h4>
+                    <h4 class="fw-bold text-info mb-0" id="sum-moph-bal"><i class="fas fa-spinner fa-spin fa-sm"></i>
+                    </h4>
                     <div class="small text-muted mt-1">บาท</div>
                 </div>
             </div>
@@ -33,7 +35,8 @@
             <div class="card border-0 shadow-sm h-100 bg-white border-start border-4 border-success rounded-4">
                 <div class="card-body p-3">
                     <div class="text-muted small fw-bold mb-1">เงินนอก สป. (รวมทั้งหมด)</div>
-                    <h4 class="fw-bold text-success mb-0" id="sum-nonmoph-bal"><i class="fas fa-spinner fa-spin fa-sm"></i></h4>
+                    <h4 class="fw-bold text-success mb-0" id="sum-nonmoph-bal"><i
+                            class="fas fa-spinner fa-spin fa-sm"></i></h4>
                     <div class="small text-muted mt-1">บาท</div>
                 </div>
             </div>
@@ -42,7 +45,8 @@
             <div class="card border-0 shadow-sm h-100 bg-white border-start border-4 border-warning rounded-4">
                 <div class="card-body p-3">
                     <div class="text-muted small fw-bold mb-1">↳ เฉพาะ เงินบำรุง สสจ.เลย</div>
-                    <h4 class="fw-bold text-warning mb-0" id="sum-loeifund-bal"><i class="fas fa-spinner fa-spin fa-sm"></i></h4>
+                    <h4 class="fw-bold text-warning mb-0" id="sum-loeifund-bal"><i
+                            class="fas fa-spinner fa-spin fa-sm"></i></h4>
                     <div class="small text-muted mt-1">บาท</div>
                 </div>
             </div>
@@ -51,7 +55,8 @@
             <div class="card border-0 shadow-lg h-100 bg-dark rounded-4">
                 <div class="card-body p-3 text-center">
                     <div class="text-white-50 small fw-bold mb-1">🔥 รวมคงเหลือทั้งระบบ</div>
-                    <h3 class="fw-bold text-white mb-0" id="sum-total-bal"><i class="fas fa-spinner fa-spin fa-sm"></i></h3>
+                    <h3 class="fw-bold text-white mb-0" id="sum-total-bal"><i class="fas fa-spinner fa-spin fa-sm"></i>
+                    </h3>
                     <div class="small text-warning mt-1">พร้อมใช้งาน (บาท)</div>
                 </div>
             </div>
@@ -82,7 +87,7 @@
                         <option value="REFUNDED" class="text-danger">REFUNDED (ส่งคืนเงินแล้ว)</option>
                     </select>
                 </div>
-                
+
                 <div class="col-md-1 mt-2">
                     <label class="form-label fw-bold small text-muted">ลำดับ</label>
                     <select class="form-select form-select-sm select2" id="filter-order" style="width: 100%;"></select>
@@ -99,9 +104,11 @@
                     <label class="form-label fw-bold small text-muted">กิจกรรมย่อย</label>
                     <select class="form-select form-select-sm select2" id="filter-sub" style="width: 100%;"></select>
                 </div>
+                
                 <div class="col-md-2 mt-2">
                     <div class="d-flex gap-1">
-                        <button class="btn btn-sm btn-secondary w-100 shadow-sm fw-bold" onclick="resetMasterPlanFilter()">
+                        <button class="btn btn-sm btn-secondary w-100 shadow-sm fw-bold"
+                            onclick="resetMasterPlanFilter()">
                             <i class="fas fa-sync-alt"></i> ล้าง
                         </button>
                         <button class="btn btn-sm btn-primary w-100 shadow-sm fw-bold" onclick="runMasterPlanFilter()">
@@ -113,9 +120,11 @@
         </div>
     </div>
 
-    <div id="bulk-action-bar" class="alert alert-warning border-warning shadow-sm d-none align-items-center justify-content-between py-2 mb-3 rounded-pill">
+    <div id="bulk-action-bar"
+        class="alert alert-warning border-warning shadow-sm d-none align-items-center justify-content-between py-2 mb-3 rounded-pill">
         <div class="ms-3 text-dark fw-bold">
-            <i class="fas fa-check-square text-primary me-2"></i> เลือกแล้ว <span id="selected-count" class="badge bg-danger fs-6 mx-1">0</span> รายการ
+            <i class="fas fa-check-square text-primary me-2"></i> เลือกแล้ว <span id="selected-count"
+                class="badge bg-danger fs-6 mx-1">0</span> รายการ
         </div>
         <button class="btn btn-warning fw-bold rounded-pill px-4 shadow-sm" onclick="openBulkUpdateModal()">
             <i class="fas fa-exchange-alt me-2"></i> เปลี่ยนสถานะที่เลือก
@@ -129,7 +138,8 @@
                     <thead class="bg-dark text-white">
                         <tr>
                             <th class="text-center" style="width: 40px;">
-                                <input class="form-check-input" type="checkbox" id="selectAllCheckbox" onclick="toggleAllMasterPlanCheckboxes(this)">
+                                <input class="form-check-input" type="checkbox" id="selectAllCheckbox"
+                                    onclick="toggleAllMasterPlanCheckboxes(this)">
                             </th>
                             <th class="ps-2 py-3" style="width: 120px;">ลำดับ/กลุ่มงาน</th>
                             <th>รายละเอียดโครงการ</th>
@@ -153,28 +163,31 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header bg-primary text-white py-3">
-                <h5 class="modal-title fw-bold" id="planModalTitle"><i class="fas fa-edit me-2"></i>จัดการข้อมูลโครงการ</h5>
+                <h5 class="modal-title fw-bold" id="planModalTitle"><i class="fas fa-edit me-2"></i>จัดการข้อมูลโครงการ
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 bg-light">
 
                 <form id="formMasterPlan" onsubmit="submitMasterPlan(event)">
-                    <input type="hidden" id="p_id"> 
-                    
+                    <input type="hidden" id="p_id">
+
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label class="form-label fw-bold text-muted">1. ลำดับโครงการ</label>
                             <input type="number" class="form-control" id="p_order" placeholder="ระบุตัวเลข">
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label fw-bold text-muted">2. กลุ่มงาน/งาน <span class="text-danger">*</span></label>
-                            <select class="form-select select2-modal" id="p_dept" required style="width: 100%;"></select>
+                            <label class="form-label fw-bold text-muted">2. กลุ่มงาน/งาน <span
+                                    class="text-danger">*</span></label>
+                            <select class="form-select select2-modal" id="p_dept" required
+                                style="width: 100%;"></select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold text-muted">3. ประเภทงบ</label>
                             <select class="form-select select2-modal" id="p_type" style="width: 100%;"></select>
                         </div>
-                        
+
                         <div class="col-md-5">
                             <label class="form-label fw-bold text-muted">4. แหล่งงบประมาณ</label>
                             <input type="text" class="form-control" id="p_source" placeholder="เช่น เงินนอก สป.">
@@ -183,12 +196,13 @@
                             <label class="form-label fw-bold text-muted">5. แผนงาน</label>
                             <select class="form-select select2-modal" id="p_plan" style="width: 100%;"></select>
                         </div>
-                        
+
                         <div class="col-md-12">
-                            <label class="form-label fw-bold text-primary">6. ชื่อโครงการ <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold text-primary">6. ชื่อโครงการ <span
+                                    class="text-danger">*</span></label>
                             <input type="text" class="form-control border-primary" id="p_proj" required>
                         </div>
-                        
+
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-muted">7. กิจกรรมหลัก</label>
                             <input type="text" class="form-control" id="p_act">
@@ -197,30 +211,40 @@
                             <label class="form-label fw-bold text-muted">8. กิจกรรมย่อย</label>
                             <input type="text" class="form-control" id="p_sub">
                         </div>
-                        
+
                         <div class="col-md-3">
                             <label class="form-label fw-bold text-dark">9. อนุมัติตามแผน</label>
-                            <input type="number" step="0.01" class="form-control fw-bold text-end" id="p_approve" placeholder="0.00">
+                            <input type="number" step="0.01" class="form-control fw-bold text-end" id="p_approve"
+                                placeholder="0.00">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold text-dark">10. จัดสรร (บาท)</label>
-                            <input type="number" step="0.01" class="form-control border-dark fw-bold text-end" id="p_alloc" placeholder="0.00">
+                            <input type="number" step="0.01" class="form-control border-dark fw-bold text-end"
+                                id="p_alloc" placeholder="0.00">
                         </div>
-                        
+
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-muted">11. ระยะเวลาดำเนินโครงการ</label>
-                            <select class="form-select select2-modal" id="p_months" multiple="multiple" style="width: 100%;">
-                                <option value="ต.ค.">ต.ค.</option><option value="พ.ย.">พ.ย.</option>
-                                <option value="ธ.ค.">ธ.ค.</option><option value="ม.ค.">ม.ค.</option>
-                                <option value="ก.พ.">ก.พ.</option><option value="มี.ค.">มี.ค.</option>
-                                <option value="เม.ย.">เม.ย.</option><option value="พ.ค.">พ.ค.</option>
-                                <option value="มิ.ย.">มิ.ย.</option><option value="ก.ค.">ก.ค.</option>
-                                <option value="ส.ค.">ส.ค.</option><option value="ก.ย.">ก.ย.</option>
+                            <select class="form-select select2-modal" id="p_months" multiple="multiple"
+                                style="width: 100%;">
+                                <option value="ต.ค.">ต.ค.</option>
+                                <option value="พ.ย.">พ.ย.</option>
+                                <option value="ธ.ค.">ธ.ค.</option>
+                                <option value="ม.ค.">ม.ค.</option>
+                                <option value="ก.พ.">ก.พ.</option>
+                                <option value="มี.ค.">มี.ค.</option>
+                                <option value="เม.ย.">เม.ย.</option>
+                                <option value="พ.ค.">พ.ค.</option>
+                                <option value="มิ.ย.">มิ.ย.</option>
+                                <option value="ก.ค.">ก.ค.</option>
+                                <option value="ส.ค.">ส.ค.</option>
+                                <option value="ก.ย.">ก.ย.</option>
                             </select>
                         </div>
 
                         <div class="col-md-4 mt-4 pt-2 border-top">
-                            <label class="form-label fw-bold text-danger">สถานะ <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold text-danger">สถานะ <span
+                                    class="text-danger">*</span></label>
                             <select class="form-select border-danger fw-bold" id="p_status" required>
                                 <option value="ACTIVE" class="text-success">ACTIVE</option>
                                 <option value="INACTIVE" class="text-secondary">INACTIVE</option>
@@ -229,13 +253,16 @@
                         </div>
                         <div class="col-md-8 mt-4 pt-2 border-top">
                             <label class="form-label fw-bold text-primary">หมายเหตุการปรับปรุง</label>
-                            <input type="text" class="form-control border-primary" id="p_remark" placeholder="โปรดระบุหากมีการเปลี่ยนสถานะ">
+                            <input type="text" class="form-control border-primary" id="p_remark"
+                                placeholder="โปรดระบุหากมีการเปลี่ยนสถานะ">
                         </div>
                     </div>
-                    
+
                     <div class="text-end mt-4 pt-3 border-top">
-                        <button type="button" class="btn btn-secondary px-4 me-2 rounded-pill" data-bs-dismiss="modal">ยกเลิก</button>
-                        <button type="submit" class="btn btn-primary px-5 fw-bold rounded-pill shadow-sm" id="btnSavePlan">
+                        <button type="button" class="btn btn-secondary px-4 me-2 rounded-pill"
+                            data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary px-5 fw-bold rounded-pill shadow-sm"
+                            id="btnSavePlan">
                             <i class="fas fa-save me-2"></i>บันทึกข้อมูล
                         </button>
                     </div>
@@ -250,7 +277,8 @@
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header bg-success text-white py-3">
-                <h5 class="modal-title fw-bold"><i class="fas fa-file-import me-2"></i>นำเข้าข้อมูลแผนงาน (Bulk Import)</h5>
+                <h5 class="modal-title fw-bold"><i class="fas fa-file-import me-2"></i>นำเข้าข้อมูลแผนงาน (Bulk Import)
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 bg-light">
@@ -258,18 +286,22 @@
                     <div class="card-body p-4 text-center">
                         <i class="fas fa-cloud-upload-alt fa-3x text-success opacity-50 mb-3"></i>
                         <h6 class="fw-bold text-dark mb-3">เลือกไฟล์ Excel หรือ CSV ที่ต้องการนำเข้า</h6>
-                        <input class="form-control" type="file" id="importFile" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                        <input class="form-control" type="file" id="importFile"
+                            accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
                         <small class="text-danger mt-2 d-block" id="importErrorMsg"></small>
                     </div>
                 </div>
 
                 <div id="previewContainer" class="d-none">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold text-primary mb-0"><i class="fas fa-search me-2"></i>ตัวอย่างข้อมูล (Preview & Validation)</h6>
+                        <h6 class="fw-bold text-primary mb-0"><i class="fas fa-search me-2"></i>ตัวอย่างข้อมูล (Preview
+                            & Validation)</h6>
                         <span id="previewStatus" class="badge bg-secondary">กำลังรอไฟล์...</span>
                     </div>
-                    <div class="table-responsive bg-white border rounded-3" style="max-height: 400px; overflow-y: auto;">
-                        <table class="table table-sm table-bordered table-hover small mb-0" style="white-space: nowrap;">
+                    <div class="table-responsive bg-white border rounded-3"
+                        style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered table-hover small mb-0"
+                            style="white-space: nowrap;">
                             <thead class="table-dark sticky-top" id="previewHead"></thead>
                             <tbody id="previewBody"></tbody>
                         </table>
@@ -277,8 +309,10 @@
                 </div>
             </div>
             <div class="modal-footer bg-light px-4 py-3">
-                <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">ยกเลิก</button>
-                <button type="button" class="btn btn-success px-4 fw-bold rounded-pill shadow-sm" id="btnConfirmImport" disabled onclick="submitImportData()">
+                <button type="button" class="btn btn-secondary px-4 rounded-pill"
+                    data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-success px-4 fw-bold rounded-pill shadow-sm" id="btnConfirmImport"
+                    disabled onclick="submitImportData()">
                     <i class="fas fa-check-circle me-2"></i>ยืนยันการนำเข้า
                 </button>
             </div>
