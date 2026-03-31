@@ -1,64 +1,36 @@
-ระบบ AP 2569 MONITORING version : 690209-1200 </br>
-✅ Dashboard: </br>
-✅ สืบค้นแผนปฏิบัติ : OK </br>
-✅ แผนงานประจำปี : OK </br>
-✅ รายงานสรุป : OK </br>
-✅ ธุรกรรม : </br> 
-       เบิกจ่าย OK </br>
-       ✅ ฟอร์มบันทึกเบิกจ่าย OK </br>
-       ✅ ประวัติการเบิกจ่าย OK </br>
-✅ ธุรกรรม : 
-       ยืมเงิน-คืนเงินยืม </br>
-       ✅ ฟอร์มบันทึกยืมเงิน  </br>
-       ✅ ประวัติการยืมเงิน </br>
-       ✅ บันทึกการคืนเงินยืม </br>
-⏳ ธุรกรรม : 
-       การจัดสรรงบประมาณ </br>
-       ✅ ฟอร์มบันทึกจัดสรรงบประมาณ  </br>
-       ✅ ประวัติการจัดสรรงบประมาณ </br>
-       ⏳ Check Logic การบันทึกจัดสรร </br>
-Login - RBAC email Authen
-       Admin Panel
-       Edit Project
+📊 1. ระบบภาพรวมและแดชบอร์ดสำหรับผู้บริหาร (Executive Dashboard & Reports)
+- แสดงผลรวมยอดงบประมาณแบบเรียลไทม์ แยกตามประเภทงบ (สป.สธ., เงินนอก สป., และเงินบำรุง สสจ.) และแสดงยอดรวมทั้งหมดที่พร้อมใช้งาน.
+- ระบบรายงานสรุปภาพรวม (Executive Summary) สามารถดูความคืบหน้าการเบิกจ่ายและเจาะลึกข้อมูล (Drill-down) แยกตามกลุ่มงานและแหล่งงบประมาณได้.
+- สามารถเรียกดูรายงานแผนงานประจำปี โดยกรองตามไตรมาส (Q1-Q4) หรือรายเดือน เพื่อดูความสอดคล้องตามช่วงเวลา.
 
-10 กุมภาพันธ์ 2569 </br>
-![2026-02-10_16-01-13](https://github.com/user-attachments/assets/d2d9f9b7-f892-449c-9f6e-bafaeed31098)
+📝 2. ระบบบริหารจัดการแผนปฏิบัติการ (Action Plan Management)
+- Smart Form: ฟอร์มเพิ่ม/แก้ไขโครงการ 12 ช่องที่ครอบคลุมข้อมูลสำคัญ (เช่น ลำดับ, กลุ่มงาน, แผนงาน, โครงการ, งบอนุมัติ, ฯลฯ).
+- Auto Project ID: ระบบสร้างรหัสโครงการให้อัตโนมัติ (เช่น P-2569-0001) เพื่อป้องกันการสับสนและซ้ำซ้อน.
+- Cascading Dropdown: ตัวกรองข้อมูลแบบลูกโซ่ (เลือกลำดับ -> โชว์โครงการ -> โชว์กิจกรรม) ช่วยป้องกันผู้ใช้งานเลือกข้อมูลขัดแย้งกัน.
+- Bulk Update & Auto-Refund: ระบบติ๊กเลือกหลายโครงการเพื่อเปลี่ยนสถานะพร้อมกัน (ACTIVE/INACTIVE/REFUNDED).
+- หากปรับสถานะโครงการเป็น "REFUNDED" (เงินนอก สป.) ระบบจะตัดยอดคงเหลือและส่งคืนเข้าชีต "ถังเงินเหลือจ่าย" ให้อัตโนมัติ.
+- Bulk Import: รองรับการนำเข้าข้อมูลแผนงานทีละจำนวนมากผ่านไฟล์ Excel/CSV พร้อมระบบ Validation ตรวจสอบความถูกต้องก่อนนำเข้า.
 
+💰 3. ระบบจัดการธุรกรรมการเงิน (Financial Transactions)
+- ระบบเบิกจ่าย (Expense): บันทึกการเบิกจ่ายพร้อมระบบดักจับไม่ให้เบิกเกินงบ (ป้องกันงบติดลบ) และอัปเดตยอดคงเหลืออัตโนมัติ.
+- ระบบจัดการเงินยืม (Loan): สามารถบันทึกการยืมเงิน และเมื่อมีการ "คืนเงินยืม" (รองรับทั้งคืนครบและคืนบางส่วน) ระบบจะประมวลผลตัดยอดใช้จ่ายจริง และคำนวณเงินทอนกลับเข้ายอดคงเหลือได้.
+- ระบบจัดสรรงบเพิ่มเติม (Allocation Top-up): สามารถอัดฉีดงบประมาณจัดสรรเพิ่มระหว่างปีให้กับโครงการได้ โดยเก็บประวัติและเลขที่หนังสืออ้างอิงไว้ตรวจสอบย้อนหลัง.
 
-9 กุมภาพันธ์ 2569 </br>
-ปรับ Logic การคืนเงินยืม/ล้างหนี้
-![2026-02-09_15-45-51](https://github.com/user-attachments/assets/5dec3044-8682-42d8-8466-4f0e9231c08e)
+🔐 4. ระบบความปลอดภัยและสถาปัตยกรรมฐานข้อมูล (Security & Database)
+- Authentication & Role-Based Access: ตรวจสอบสิทธิผ่าน Email โดยแบ่งระดับสิทธิ์ชัดเจน (ADMIN, EDITOR, PUBLIC).
+- Action Log: เก็บบันทึกประวัติการเข้าสู่ระบบ (Login) และการกระทำต่างๆ ของผู้ใช้งาน.
+- Session Management: มีระบบ Idle Timeout ที่จะออกจากระบบอัตโนมัติหากไม่มีการเคลื่อนไหวเกิน 15 นาที.
+- Dynamic Column Mapping: สถาปัตยกรรมหลังบ้านระดับสูงที่ให้ Google Apps Script อ่าน "ชื่อหัวคอลัมน์" แทนการนับตำแหน่งตายตัว ทำให้สามารถเพิ่ม/ลบ/ย้ายคอลัมน์ใน Google Sheet ได้อย่างอิสระโดยที่ระบบไม่พัง.
 
-
-6 กุมภาพันธ์ 2569 </br>
-- Modal Drill Down</br>
-- ปรับหน้าบันทึกเบิกจ่าย</br>
-<img width="1905" height="1080" alt="2026-02-06_15-42-48" src="https://github.com/user-attachments/assets/b8c7f3ee-f757-4b2f-9f72-008ea498ceb3" />
-![2026-02-06_15-40-54](https://github.com/user-attachments/assets/2e083fd6-ca56-4040-bf7f-559dd52a8ee8)
-<img width="1901" height="1080" alt="2026-02-06_15-40-32" src="https://github.com/user-attachments/assets/984e3c10-a7c6-49b2-b6fb-48d797189fc9" />
-<img width="1905" height="1080" alt="2026-02-06_15-40-23" src="https://github.com/user-attachments/assets/a868ae85-b939-4e38-9e7d-e0621f0cbf00" />
-<img width="1905" height="1080" alt="2026-02-06_15-32-35" src="https://github.com/user-attachments/assets/bd2b24fe-a3b9-4234-ac70-45da757a3984" />
+✨ 5. ประสบการณ์ผู้ใช้งาน (UX/UI Enhancements)
+- รองรับการค้นหาข้อมูลแบบทันที (Instant Search) ผ่าน Select2 และสามารถใช้คีย์บอร์ด (เช่น ปุ่ม Enter) สั่งการได้รวดเร็ว.
+- ดีไซน์แบบ Responsive สวยงามทันสมัย พร้อมการใช้ Badge (ป้ายสี) เพื่อแยกประเภทงบและสถานะต่างๆ ให้มองเห็นได้ชัดเจน.
+- แจ้งเตือนสถานะการทำงานผ่าน Popup (SweetAlert2) ที่สวยงามและเข้าใจง่าย.
 
 Dashboard
-![2026-01-30_16-05-49](https://github.com/user-attachments/assets/cb11a827-2edb-467b-ba4d-1f88980ae43b)
+<img width="1825" height="2182" alt="image" src="https://github.com/user-attachments/assets/0c830373-f36b-48f9-94dc-c04a838c8744" />
 
-<img width="1897" height="2042" alt="image" src="https://github.com/user-attachments/assets/679572a1-acc0-4807-8840-55c97d94d1ae" />
-
-สืบค้นแผนปฏิบัติ
-30/1/2569 </br>
-![2026-01-30_13-58-22](https://github.com/user-attachments/assets/ee7fabe9-33bb-41ae-811e-5f3a9945eec8)
-
-แสดงแผนงานประจำปี
-30/1/2569 </br>
-![2026-01-30_13-59-28](https://github.com/user-attachments/assets/bbd14b73-fb6d-44fb-84cb-15da5252fdf3)
-
-บันทึกการเบิกจ่าย
-![2026-01-27_11-49-23](https://github.com/user-attachments/assets/be5c5a08-20af-4dbb-9ec6-255f55316b78)
-<img width="1903" height="1327" alt="image" src="https://github.com/user-attachments/assets/fe688803-183b-4e40-9aba-6612f7c11a02" />
-
-บันทึกการยืมเงิน
-![2026-01-27_11-50-34](https://github.com/user-attachments/assets/43a0c7d0-2de2-491c-9733-23cfdf9309b0)
-<img width="1904" height="1510" alt="image" src="https://github.com/user-attachments/assets/a23f01ff-f91e-430f-86c4-5c7f48f79718" />
-
+รายงานสรุป (Executive Summary)
+<img width="1830" height="3270" alt="image" src="https://github.com/user-attachments/assets/a1bebd89-7b57-4b14-a1c9-09d019173698" />
 
 
