@@ -150,11 +150,33 @@
             var $s = $(sel); $s.empty().append('<option value="">-- เลือกลำดับ --</option>');
             orders.forEach(o => $s.append(`<option value="${o}">${o}</option>`));
         });
+
         var depts = [...new Set(CACHED_OPTIONS.map(r => r.dept).filter(Boolean))].sort();
-        ['#searchDeptSelect', '#yearlyDeptSelect'].forEach(sel => {
+        ['#searchDeptSelect', '#yearlyDeptSelect', '#sumDept'].forEach(sel => {
             var $s = $(sel); $s.empty().append('<option value="">-- แสดงทั้งหมด --</option>');
             depts.forEach(d => $s.append(`<option value="${d}">${d}</option>`));
         });
+
+        // 🎯 ดึงแหล่งงบประมาณจาก CACHED_OPTIONS มาใส่ #sumSource
+        var sources = [...new Set(CACHED_OPTIONS.map(r => r.budgetSource || r.source).filter(Boolean))].sort();
+        var $src = $('#sumSource').empty().append('<option value="">-- แสดงทั้งหมด --</option>');
+        sources.forEach(s => $src.append(`<option value="${s}">${s}</option>`));
+
+        // 🎯 ตั้งค่า Default ให้เป็น "เงินบำรุง สสจ.เลย" 
+        $('#sumSource').val('เงินบำรุง สสจ.เลย');
+
+        // 🎯 สั่งดึงประเภทงบจากชีต c_budget_type
+        google.script.run.withSuccessHandler(function (res) {
+            var $type = $('#sumType').empty().append('<option value="">-- แสดงทั้งหมด --</option>');
+            if (res.types) {
+                res.types.forEach(t => $type.append(`<option value="${t}">${t}</option>`));
+            }
+            // 🎯 ตั้งค่า Default ให้เป็น "เงินนอก สป." ทันทีที่โหลด Dropdown เสร็จ
+            $('#sumType').val('เงินนอก สป.');
+        }).getModalDropdownData();
+
+        // แปลง Dropdown ให้เป็น Select2 เพื่อให้ค้นหาได้
+        $('#sumSource, #sumDept').select2({ theme: 'bootstrap-5', width: '100%' });
     }
 
     // ==========================================
@@ -166,16 +188,66 @@
     }
 
     function renderDashboard(data) {
+        // 🔄 ซ่อน Loading Overlay เมื่อข้อมูลโหลดเสร็จ
+        var overlay = document.getElementById('app-loading-overlay');
+        if (overlay) {
+            overlay.classList.add('fade-out');
+            setTimeout(function () { overlay.remove(); }, 600);
+        }
+
         if (!data || data.error) {
             $('#moph-approved').html('<span class="text-danger small">' + (data ? data.error : "Error") + '</span>');
             return;
         }
+        // 1. MOPH
         updateCards('moph', data.moph);
         renderGauge('mophGauge', data.moph);
         renderBarChart('mophBar', data.moph.deptStats, '#198754');
-        updateCards('nonmoph', data.nonMoph);
-        renderGauge('nonMophGauge', data.nonMoph);
-        renderBarChart('nonMophBar', data.nonMoph.deptStats, '#0d6efd');
+
+        // 2. Loei Fund (แทนที่ NonMOPH เดิม)
+        updateCards('nonmoph', data.loeiFund);
+        renderGauge('nonMophGauge', data.loeiFund);
+        // 🎯 ส่งเลข 10 ไปท้ายสุด เพื่อจำกัดแค่ 10 กลุ่มงาน
+        renderBarChart('nonMophBar', data.loeiFund.deptStats, '#0d6efd', 10);
+    }
+
+    // 🎯 แก้ไขเพิ่มการรับค่า limit
+    function renderBarChart(canvasId, deptStats, colorTheme, limit) {
+        var chartData = [];
+        for (var dept in deptStats) {
+            var alloc = deptStats[dept].allocated;
+            var spent = deptStats[dept].spent;
+            var pct = alloc > 0 ? (spent / alloc) * 100 : 0;
+            if (alloc > 0) chartData.push({ label: dept, y: pct });
+        }
+
+        // เรียงจากมากไปน้อย
+        chartData.sort((a, b) => b.y - a.y);
+
+        // 🎯 หั่นเอาเฉพาะ Top 10 (ถ้ามีการส่งค่ามา)
+        if (limit && limit > 0) {
+            chartData = chartData.slice(0, limit);
+        }
+
+        var ctx = document.getElementById(canvasId);
+        if (ctx) {
+            var chartStatus = Chart.getChart(canvasId);
+            if (chartStatus != undefined) { chartStatus.destroy(); }
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.map(d => d.label),
+                    datasets: [{ data: chartData.map(d => d.y), backgroundColor: colorTheme, borderRadius: 4, barPercentage: 0.6 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'x',
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => c.raw.toFixed(2) + '%' } } },
+                    scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (v) => v + "%" } }, x: { grid: { display: false } } }
+                }
+            });
+        }
     }
 
     function updateCards(prefix, stats) {
@@ -198,26 +270,6 @@
                 type: 'doughnut',
                 data: { labels: ['เบิกจ่าย', 'คงเหลือ'], datasets: [{ data: [percent, 100 - percent], backgroundColor: ['#dc3545', '#e9ecef'], borderWidth: 0, hoverOffset: 0 }] },
                 options: { responsive: true, maintainAspectRatio: false, rotation: -90, circumference: 180, cutout: '80%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
-            });
-        }
-    }
-
-    function renderBarChart(canvasId, deptStats, colorTheme) {
-        var chartData = [];
-        for (var dept in deptStats) {
-            var alloc = deptStats[dept].allocated; var spent = deptStats[dept].spent;
-            var pct = alloc > 0 ? (spent / alloc) * 100 : 0;
-            if (alloc > 0) chartData.push({ label: dept, y: pct });
-        }
-        chartData.sort((a, b) => b.y - a.y);
-        var ctx = document.getElementById(canvasId);
-        if (ctx) {
-            var chartStatus = Chart.getChart(canvasId);
-            if (chartStatus != undefined) { chartStatus.destroy(); }
-            new Chart(ctx, {
-                type: 'bar',
-                data: { labels: chartData.map(d => d.label), datasets: [{ data: chartData.map(d => d.y), backgroundColor: colorTheme, borderRadius: 4, barPercentage: 0.6 }] },
-                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'x', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => c.raw.toFixed(2) + '%' } } }, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (v) => v + "%" } }, x: { grid: { display: false } } } }
             });
         }
     }
@@ -863,32 +915,105 @@
     // 7. SUMMARY REPORT
     // ==========================================
     function loadSummary() {
-        var q = $('#sumQuarter').val(); var m = $('#sumMonth').val();
-        $('#s-total-alloc').html('<i class="fas fa-spinner fa-spin"></i>');
-        google.script.run.withSuccessHandler(renderSummaryPage).getSummaryData(q, m);
+        // 🎯 ดึงค่า 3 ตัวจาก Filter
+        var type = $('#sumType').val();
+        var source = $('#sumSource').val();
+        var dept = $('#sumDept').val();
+
+        $('#s-total-alloc, #s-total-spent, #s-total-bal').html('<i class="fas fa-spinner fa-spin"></i>');
+        // 🎯 ส่งค่าทั้ง 3 ตัวไปที่หลังบ้าน
+        google.script.run.withSuccessHandler(renderSummaryPage).getSummaryData(type, source, dept);
+    }
+
+    // 🎯 ฟังก์ชันล้างค่า (Reset) จะกลับมาที่ Default เสมอ
+    function resetSummaryFilter() {
+        $('#sumType').val('เงินนอก สป.'); // Default ประเภทงบ
+        $('#sumSource').val('เงินบำรุง สสจ.เลย').trigger('change');  // Default แหล่งงบ
+        $('#sumDept').val(null).trigger('change'); // ล้างกลุ่มงาน
+
+        loadSummary(); // โหลดข้อมูลใหม่ตาม Default
     }
 
     function renderSummaryPage(data) {
         if (data.error) { Swal.fire('Error', data.error, 'error'); return; }
         var fmt = (n) => Number(n).toLocaleString(undefined, { minimumFractionDigits: 2 });
+
         $('#s-total-alloc').text(fmt(data.grandTotal.allocated));
         $('#s-total-spent').text(fmt(data.grandTotal.spent));
-        $('#s-total-bal').text(fmt(data.grandTotal.allocated - data.grandTotal.spent));
+        $('#s-total-bal').text(fmt(data.grandTotal.balance));
+
         var pct = (data.grandTotal.allocated > 0) ? (data.grandTotal.spent / data.grandTotal.allocated * 100) : 0;
         $('#s-total-pct').text(pct.toFixed(2) + '%');
+
+        // สั่งวาดกราฟ
         renderSummaryCharts(data);
+
+        // 🎯 วาดตาราง 6 หมวดหมู่แบบ Fix ลำดับ พร้อมแถวผลรวม
         var tSource = $('#tableSourceBody').empty();
-        data.bySource.forEach(s => {
-            var bal = s.allocated - s.spent;
-            var p = (s.allocated > 0) ? (s.spent / s.allocated * 100) : 0;
-            var badgeColor = (p >= 80) ? 'bg-success' : (p >= 50 ? 'bg-warning text-dark' : 'bg-danger');
-            tSource.append(`<tr><td class="ps-4 fw-bold">${s.name}</td><td class="text-center">${s.count}</td><td class="text-end text-primary">${fmt(s.allocated)}</td><td class="text-end text-danger">${fmt(s.spent)}</td><td class="text-center"><span class="badge ${badgeColor}">${p.toFixed(2)}%</span></td><td class="text-end pe-4 fw-bold">${fmt(bal)}</td></tr>`);
+        var totalAlloc = 0;
+        var totalSpent = 0;
+
+        var orderKeys = [
+            'สป.สธ.', 'เงิน นอก สป.', 'เงินบำรุง สสจ.เลย',
+            'เงินบำรุง HRD', 'งบพัฒนากลุ่มจังหวัด', 'งบพัฒนาจังหวัด'
+        ];
+
+        orderKeys.forEach(k => {
+            // ดัก Error กรณีหลังบ้านส่งตัวแปรมาไม่ครบ
+            if (!data.customSourceTable || !data.customSourceTable[k]) return;
+
+            var alloc = data.customSourceTable[k].allocated;
+            var spent = data.customSourceTable[k].spent;
+            var bal = alloc - spent;
+            var p = (alloc > 0) ? (spent / alloc * 100) : 0;
+
+            totalAlloc += alloc;
+            totalSpent += spent;
+
+            var pColor = (p >= 80) ? 'bg-success' : (p >= 50 ? 'bg-warning text-dark' : 'bg-danger');
+            var balColor = (bal < 0) ? 'text-danger' : 'text-success';
+
+            tSource.append(`
+                <tr>
+                    <td class="ps-4 fw-bold text-dark">${k}</td>
+                    <td class="text-end text-primary fw-bold">${fmt(alloc)}</td>
+                    <td class="text-end text-danger fw-bold">${fmt(spent)}</td>
+                    <td class="text-end fw-bold ${balColor}">${fmt(bal)}</td>
+                    <td class="align-middle px-3">
+                        <div class="progress" style="height: 20px; background-color: #e9ecef;">
+                            <div class="progress-bar ${pColor}" role="progressbar" style="width: ${p}%">${p.toFixed(2)}%</div>
+                        </div>
+                    </td>
+                </tr>
+            `);
         });
+
+        // 🎯 เพิ่มแถว "รวมทั้งสิ้น" ไว้ล่างสุด
+        var tBal = totalAlloc - totalSpent;
+        var tP = (totalAlloc > 0) ? (totalSpent / totalAlloc * 100) : 0;
+        var tPColor = (tP >= 80) ? 'bg-success' : (tP >= 50 ? 'bg-warning text-dark' : 'bg-danger');
+        var tBalColor = (tBal < 0) ? 'text-danger' : 'text-success';
+
+        tSource.append(`
+            <tr class="table-secondary border-top border-2 border-secondary">
+                <td class="ps-4 fw-bold text-dark">รวมทั้งสิ้น</td>
+                <td class="text-end text-primary fw-bold">${fmt(totalAlloc)}</td>
+                <td class="text-end text-danger fw-bold">${fmt(totalSpent)}</td>
+                <td class="text-end fw-bold ${tBalColor}">${fmt(tBal)}</td>
+                <td class="align-middle px-3">
+                    <div class="progress" style="height: 20px; background-color: #d6d8db;">
+                        <div class="progress-bar ${tPColor}" role="progressbar" style="width: ${tP}%">${tP.toFixed(2)}%</div>
+                    </div>
+                </td>
+            </tr>
+        `);
+
         var sortProg = (arr) => arr.slice().sort((a, b) => {
             var pA = (a.allocated > 0) ? (a.spent / a.allocated) : 0;
             var pB = (b.allocated > 0) ? (b.spent / b.allocated) : 0;
             return pB - pA;
         });
+
         renderDeptTable(sortProg(data.byDeptAll), '#tableDeptAllBody');
         renderDeptTable(sortProg(data.byDeptMoph), '#tableDeptMophBody');
         renderDeptTable(sortProg(data.byDeptNon), '#tableDeptNonBody');
@@ -907,6 +1032,7 @@
     }
 
     function renderSummaryCharts(data) {
+        // --- 1. วาดกราฟ Pie Chart (แสดงผลรวมทุกแหล่งงบเหมือนเดิม ไม่เปลี่ยนรูป) ---
         if (summaryPieChart) summaryPieChart.destroy();
         var ctxPie = document.getElementById('chartSource').getContext('2d');
         summaryPieChart = new Chart(ctxPie, {
@@ -914,13 +1040,79 @@
             data: { labels: data.bySource.map(s => s.name), datasets: [{ data: data.bySource.map(s => s.allocated), backgroundColor: ['#0d6efd', '#fd7e14', '#20c997', '#ffc107'], borderWidth: 1 }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
         });
+
+        // --- 2. 🎯 วาดกราฟ Bar Chart (Top 5 กลุ่มงาน เปรียบเทียบ จัดสรร-เบิกจ่าย พร้อมสีเงื่อนไข) ---
         if (summaryBarChart) summaryBarChart.destroy();
-        var top5 = data.byDeptAll.slice(0, 5);
+
+        // ดึงข้อมูลจาก byDeptFiltered (ที่ส่งมาจากหลังบ้าน) และหั่นเอาแค่ 5 อันดับแรก
+        var top5 = data.byDeptFiltered.slice(0, 5);
         var ctxBar = document.getElementById('chartTopDept').getContext('2d');
+
+        // 🎯 [ใหม่]: คำนวณสีสำหรับแท่งเบิกจ่ายทีละแท่งตามเงื่อนไข %
+        var spentBarColors = top5.map(function (d) {
+            // ป้องกันการหารด้วย 0 ถ้างบจัดสรรเป็น 0 ให้เป็นสีแดงไว้ก่อนถ้ามีการเบิก
+            if (d.allocated <= 0) {
+                return (d.spent > 0) ? '#dc3545' : '#6c757d'; // มีเบิกแต่ไม่งบ=แดง, ไม่มีทั้งคู่=เทา
+            }
+
+            // คำนวณสัดส่วน (0.0 - 1.0+)
+            var ratio = d.spent / d.allocated;
+
+            // กำหนดสีตามเงื่อนไขของคุณ Jarvis
+            if (ratio < 0.5) {
+                return '#dc3545'; // 🔴 น้อยกว่า 50% -> สีแดง (Bootstrap Danger)
+            } else if (ratio >= 0.5 && ratio < 1.0) {
+                return '#fd7e14'; // 🟠 50% ถึง น้อยกว่า 100% -> สีส้ม (Bootstrap Warning/Orange)
+            } else {
+                return '#198754'; // 🟢 100% ขึ้นไป -> สีเขียว (Bootstrap Success Green)
+            }
+        });
+
         summaryBarChart = new Chart(ctxBar, {
             type: 'bar',
-            data: { labels: top5.map(d => d.name), datasets: [{ label: 'งบจัดสรร', data: top5.map(d => d.allocated), backgroundColor: '#198754', borderRadius: 4 }, { label: 'เบิกจ่าย', data: top5.map(d => d.spent), backgroundColor: '#dc3545', borderRadius: 4 }] },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true } } }
+            data: {
+                labels: top5.map(d => d.name),
+                datasets: [
+                    {
+                        label: 'งบจัดสรร',
+                        data: top5.map(d => d.allocated),
+                        backgroundColor: '#0d6efd', // สีน้ำเงินคงเดิม
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'เบิกจ่าย',
+                        data: top5.map(d => d.spent),
+                        // 🎯 [แก้ไข]: ใช้ Array สีที่เราคำนวณมาแทนสีเดียว
+                        backgroundColor: spentBarColors,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y', // กราฟแท่งแนวนอน
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                // คำนวณ % เพื่อโชว์ใน Tooltip ด้วยเลย จะได้รู้ว่าทำไมถึงได้สีนั้น
+                                var dataset = context.chart.data.datasets;
+                                var alloc = dataset[0].data[context.dataIndex];
+                                var spent = dataset[1].data[context.dataIndex];
+                                var pct = (alloc > 0) ? (spent / alloc * 100) : 0;
+
+                                return ' ' + context.dataset.label + ': ฿' + context.raw.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' (' + pct.toFixed(2) + '%)';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { beginAtZero: true, ticks: { callback: function (v) { return v.toLocaleString(); } } },
+                    y: { grid: { display: false } }
+                }
+            }
         });
     }
 
@@ -1090,47 +1282,47 @@
 
     function getTimelineDisplayHtml(timeline) { var months = ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.']; var activeCount = timeline.filter(x => x).length; if (activeCount === 0) return '-'; if (activeCount === 12) return '<span class="badge bg-success rounded-pill fw-normal">ทั้งปีงบประมาณ</span>'; var html = '<div class="d-flex flex-wrap gap-1 justify-content-center flex-column align-items-start">'; var quarters = [{ name: 'ไตรมาส 1', indices: [0, 1, 2] }, { name: 'ไตรมาส 2', indices: [3, 4, 5] }, { name: 'ไตรมาส 3', indices: [6, 7, 8] }, { name: 'ไตรมาส 4', indices: [9, 10, 11] }]; quarters.forEach(function (q) { var activeInQ = q.indices.filter(idx => timeline[idx]); if (activeInQ.length === 3) { html += `<span class="badge bg-primary rounded-pill fw-normal mb-1">${q.name}</span>`; } else if (activeInQ.length > 0) { var monthBadges = activeInQ.map(idx => `<span class="badge bg-success fw-normal">${months[idx]}</span>`).join(' '); html += `<div class="mb-1"><strong class="text-secondary small me-1">${q.name} :</strong>${monthBadges}</div>`; } }); html += '</div>'; return html; }
 
-    function runSearch() { 
-      var dept = $('#searchDeptSelect').val(); 
-      var type = $('#searchType').val(); 
-      var quarter = $('#searchQuarter').val(); 
-      var month = $('#searchMonth').val(); 
-      
-      if ($.fn.DataTable.isDataTable('#searchTable')) { $('#searchTable').DataTable().destroy(); } $('#searchTableBody').html('<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>'); 
-      
-      google.script.run.withSuccessHandler(renderSearchPage).searchActionPlan(dept, type, quarter, month); 
+    function runSearch() {
+        var dept = $('#searchDeptSelect').val();
+        var type = $('#searchType').val();
+        var quarter = $('#searchQuarter').val();
+        var month = $('#searchMonth').val();
+
+        if ($.fn.DataTable.isDataTable('#searchTable')) { $('#searchTable').DataTable().destroy(); } $('#searchTableBody').html('<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>');
+
+        google.script.run.withSuccessHandler(renderSearchPage).searchActionPlan(dept, type, quarter, month);
     }
 
     function resetSearch() { $('#searchDeptSelect').val('').trigger('change'); $('#searchType').val(''); $('#searchQuarter').val(''); $('#searchMonth').val(''); $('#sum-count').text('0'); $('#sum-approved').text('0.00'); $('#sum-allocated').text('0.00'); if ($.fn.DataTable.isDataTable('#searchTable')) { $('#searchTable').DataTable().clear().destroy(); } $('#searchTableBody').empty(); }
-    
+
 
     // ==========================================
     // 📌 ฟังก์ชัน renderSearchPage (เพิ่มคอลัมน์ เบิกจ่าย และ คงเหลือ)
     // ==========================================
-    function renderSearchPage(data) { 
+    function renderSearchPage(data) {
         // 1. ปรับ colspan เป็น 8 เพราะเรามี 8 คอลัมน์แล้ว
-        if (data.error) { 
-            $('#searchTableBody').html('<tr><td colspan="8" class="text-danger text-center py-4"><i class="fas fa-exclamation-triangle me-2"></i>' + data.error + '</td></tr>'); 
-            return; 
-        } 
-        
+        if (data.error) {
+            $('#searchTableBody').html('<tr><td colspan="8" class="text-danger text-center py-4"><i class="fas fa-exclamation-triangle me-2"></i>' + data.error + '</td></tr>');
+            return;
+        }
+
         // ดักจับค่า NaN ให้เป็น 0
-        var fmt = (n) => (parseFloat(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }); 
-        
-        $('#sum-count').text(Number(data.summary.count).toLocaleString()); 
-        $('#sum-approved').text(fmt(data.summary.approved)); 
-        $('#sum-allocated').text(fmt(data.summary.allocated)); 
-        
-        if ($.fn.DataTable.isDataTable('#searchTable')) { 
-            $('#searchTable').DataTable().destroy(); 
-        } 
-        
-        var tbody = $('#searchTableBody'); 
-        tbody.empty(); 
-        
-        data.list.forEach(function (row) { 
-            var timelineHtml = getTimelineDisplayHtml(row.timeline); 
-            
+        var fmt = (n) => (parseFloat(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+        $('#sum-count').text(Number(data.summary.count).toLocaleString());
+        $('#sum-approved').text(fmt(data.summary.approved));
+        $('#sum-allocated').text(fmt(data.summary.allocated));
+
+        if ($.fn.DataTable.isDataTable('#searchTable')) {
+            $('#searchTable').DataTable().destroy();
+        }
+
+        var tbody = $('#searchTableBody');
+        tbody.empty();
+
+        data.list.forEach(function (row) {
+            var timelineHtml = getTimelineDisplayHtml(row.timeline);
+
             let bType = '';
             if (row.budgetType) bType = String(row.budgetType).trim();
             else if (row.type) bType = String(row.type).trim();
@@ -1140,7 +1332,7 @@
             if (row.budgetSource) bSource = String(row.budgetSource).trim();
             else if (row.source) bSource = String(row.source).trim();
             else bSource = 'ไม่มีข้อมูลแหล่งงบ';
-            
+
             let badgesHtml = '';
 
             if (bType.includes('เงินนอก')) {
@@ -1162,7 +1354,7 @@
                 <div class="text-primary fw-bold text-wrap mb-1" style="font-size: 1.15rem; line-height: 1.4;">${row.project}</div>
                 <div class="text-muted small"><i class="fas fa-level-up-alt fa-rotate-90 ms-1 me-2 opacity-50"></i>${row.activity || '-'}</div>
             `;
-            
+
             if (row.subActivity && String(row.subActivity).trim() !== '') {
                 detailHtml += `<div class="text-muted small ms-3 mt-1"><i class="fas fa-level-up-alt fa-rotate-90 ms-1 me-2 opacity-50"></i>${row.subActivity}</div>`;
             }
@@ -1183,14 +1375,14 @@
                 <td class="text-end align-top pt-3 fw-bold text-danger">${fmt(row.spent)}</td>
                 <td class="text-end align-top pt-3 fw-bold ${balanceClass}">${fmt(row.balance)}</td>
             </tr>
-            `); 
-        }); 
-        
-        $('#searchTable').DataTable({ 
-            "language": { "search": "ค้นหา:", "paginate": { "next": ">", "previous": "<" } }, 
-            "pageLength": 10, 
-            "order": [[0, "asc"]] 
-        }); 
+            `);
+        });
+
+        $('#searchTable').DataTable({
+            "language": { "search": "ค้นหา:", "paginate": { "next": ">", "previous": "<" } },
+            "pageLength": 10,
+            "order": [[0, "asc"]]
+        });
     }
 
     function loadYearlyData() { var dept = $('#yearlyDeptSelect').val(); var type = $('#yearlyType').val(); var quarter = $('#yearlyQuarter').val(); var month = $('#yearlyMonth').val(); if ($.fn.DataTable.isDataTable('#yearlyTable')) { $('#yearlyTable').DataTable().destroy(); } $('#yearlyTableBody').html('<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>'); google.script.run.withSuccessHandler(renderYearlyPage).getYearlyPlanData(dept, type, quarter, month); }
@@ -1526,5 +1718,18 @@
         $('#sAllocOrder').val(null).trigger('change');
         renderAllocHistoryTable(ALLOC_HISTORY_CACHE);
     }
+
+    // 🎯 ดักจับ Event การเลื่อน (Scroll) เพื่อจัดการ Sticky Panel
+    window.addEventListener('scroll', function () {
+        var stickyPanel = document.getElementById('summaryFilterPanel');
+        if (stickyPanel) {
+            // ถ้าเลื่อนลงมาเกิน 100px ให้เติมคลาส is-sticky เพื่อเพิ่มเงา
+            if (window.scrollY > 100) {
+                stickyPanel.classList.add('is-sticky');
+            } else {
+                stickyPanel.classList.remove('is-sticky');
+            }
+        }
+    });
 
 </script>
