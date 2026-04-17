@@ -104,7 +104,7 @@
                     <label class="form-label fw-bold small text-muted">กิจกรรมย่อย</label>
                     <select class="form-select form-select-sm select2" id="filter-sub" style="width: 100%;"></select>
                 </div>
-                
+
                 <div class="col-md-2 mt-2">
                     <div class="d-flex gap-1">
                         <button class="btn btn-sm btn-secondary w-100 shadow-sm fw-bold"
@@ -174,76 +174,134 @@
 
                     <div class="row g-3">
                         <div class="col-md-3">
-                            <label class="form-label fw-bold text-muted">1. ลำดับโครงการ</label>
-                            <input type="number" class="form-control" id="p_order" placeholder="ระบุตัวเลข">
+                            <label class="form-label fw-bold text-muted">1. ปีงบประมาณ <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control bg-white text-primary fw-bold" id="p_year" readonly>
                         </div>
-                        <div class="col-md-5">
-                            <label class="form-label fw-bold text-muted">2. กลุ่มงาน/งาน <span
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">2. หมวด <span
+                                    class="text-danger">*</span></label>
+                            <select class="form-select select2-modal" id="p_cat" required style="width: 100%;"></select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold text-muted">3. ลำดับโครงการ <span
+                                    class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="p_order" placeholder="ระบุตัวเลข" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-muted">4. กลุ่มงาน/งาน <span
                                     class="text-danger">*</span></label>
                             <select class="form-select select2-modal" id="p_dept" required
                                 style="width: 100%;"></select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold text-muted">3. ประเภทงบ</label>
+                            <label class="form-label fw-bold text-muted">5. ประเภทงบ</label>
                             <select class="form-select select2-modal" id="p_type" style="width: 100%;"></select>
                         </div>
-
-                        <div class="col-md-5">
-                            <label class="form-label fw-bold text-muted">4. แหล่งงบประมาณ</label>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-muted">6. แหล่งงบประมาณ</label>
                             <input type="text" class="form-control" id="p_source" placeholder="เช่น เงินนอก สป.">
                         </div>
-                        <div class="col-md-7">
-                            <label class="form-label fw-bold text-muted">5. แผนงาน</label>
-                            <select class="form-select select2-modal" id="p_plan" style="width: 100%;"></select>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">7. รหัสงบประมาณ</label>
+                            <input type="text" class="form-control" id="p_budget_code" placeholder="ระบุรหัสงบประมาณ">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">8. รหัสกิจกรรม</label>
+                            <input type="text" class="form-control" id="p_act_code" placeholder="ระบุรหัสกิจกรรม">
                         </div>
 
-                        <div class="col-md-12">
-                            <label class="form-label fw-bold text-primary">6. ชื่อโครงการ <span
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-muted">9. แผนงาน</label>
+                            <select class="form-select select2-modal" id="p_plan" style="width: 100%;"></select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold text-primary">10. ชื่อโครงการ <span
                                     class="text-danger">*</span></label>
                             <input type="text" class="form-control border-primary" id="p_proj" required>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted">7. กิจกรรมหลัก</label>
-                            <input type="text" class="form-control" id="p_act">
+                            <label class="form-label fw-bold text-muted">11. กิจกรรมหลัก <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="p_act" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted">8. กิจกรรมย่อย</label>
+                            <label class="form-label fw-bold text-muted">12. กิจกรรมย่อย</label>
                             <input type="text" class="form-control" id="p_sub">
                         </div>
 
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold text-dark">9. อนุมัติตามแผน</label>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">13. อนุมัติตามแผน (บาท)</label>
                             <input type="number" step="0.01" class="form-control fw-bold text-end" id="p_approve"
                                 placeholder="0.00">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold text-dark">10. จัดสรร (บาท)</label>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">14. จัดสรร (บาท)</label>
                             <input type="number" step="0.01" class="form-control border-dark fw-bold text-end"
                                 id="p_alloc" placeholder="0.00">
                         </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-primary">15. คงเหลือ (ไม่รวมเงินยืม)</label>
+                            <input type="text" class="form-control bg-light text-primary fw-bold text-end" id="p_bal"
+                                readonly placeholder="0.00">
+                        </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted">11. ระยะเวลาดำเนินโครงการ</label>
-                            <select class="form-select select2-modal" id="p_months" multiple="multiple"
-                                style="width: 100%;">
-                                <option value="ต.ค.">ต.ค.</option>
-                                <option value="พ.ย.">พ.ย.</option>
-                                <option value="ธ.ค.">ธ.ค.</option>
-                                <option value="ม.ค.">ม.ค.</option>
-                                <option value="ก.พ.">ก.พ.</option>
-                                <option value="มี.ค.">มี.ค.</option>
-                                <option value="เม.ย.">เม.ย.</option>
-                                <option value="พ.ค.">พ.ค.</option>
-                                <option value="มิ.ย.">มิ.ย.</option>
-                                <option value="ก.ค.">ก.ค.</option>
-                                <option value="ส.ค.">ส.ค.</option>
-                                <option value="ก.ย.">ก.ย.</option>
-                            </select>
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-bold text-muted mb-0">16. ระยะเวลาดำเนินโครงการ</label>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-light border rounded-pill py-0 px-2"
+                                        onclick="$('.month-chk').prop('checked', true)"><i
+                                            class="fas fa-check-double me-1 text-success"></i>เลือกทั้งปี</button>
+                                    <button type="button" class="btn btn-sm btn-light border rounded-pill py-0 px-2"
+                                        onclick="$('.month-chk').prop('checked', false)"><i
+                                            class="fas fa-eraser me-1 text-danger"></i>ล้างค่า</button>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2" id="month-checkbox-group">
+                                <input type="checkbox" class="btn-check month-chk" id="m_oct" value="ต.ค.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_oct">ต.ค.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_nov" value="พ.ย.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_nov">พ.ย.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_dec" value="ธ.ค.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_dec">ธ.ค.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_jan" value="ม.ค.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_jan">ม.ค.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_feb" value="ก.พ.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_feb">ก.พ.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_mar" value="มี.ค.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_mar">มี.ค.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_apr" value="เม.ย.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_apr">เม.ย.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_may" value="พ.ค.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_may">พ.ค.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_jun" value="มิ.ย.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_jun">มิ.ย.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_jul" value="ก.ค.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_jul">ก.ค.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_aug" value="ส.ค.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_aug">ส.ค.</label>
+
+                                <input type="checkbox" class="btn-check month-chk" id="m_sep" value="ก.ย.">
+                                <label class="btn btn-outline-primary rounded-pill px-3 py-1" for="m_sep">ก.ย.</label>
+                            </div>
                         </div>
 
                         <div class="col-md-4 mt-4 pt-2 border-top">
-                            <label class="form-label fw-bold text-danger">สถานะ <span
+                            <label class="form-label fw-bold text-danger">17. สถานะ <span
                                     class="text-danger">*</span></label>
                             <select class="form-select border-danger fw-bold" id="p_status" required>
                                 <option value="ACTIVE" class="text-success">ACTIVE</option>
@@ -252,7 +310,7 @@
                             </select>
                         </div>
                         <div class="col-md-8 mt-4 pt-2 border-top">
-                            <label class="form-label fw-bold text-primary">หมายเหตุการปรับปรุง</label>
+                            <label class="form-label fw-bold text-primary">18. หมายเหตุการปรับปรุง</label>
                             <input type="text" class="form-control border-primary" id="p_remark"
                                 placeholder="โปรดระบุหากมีการเปลี่ยนสถานะ">
                         </div>

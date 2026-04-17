@@ -1,212 +1,212 @@
 <script>
-// ==========================================
-// FRONTEND AUTH & IDLE TIMEOUT LOGIC
-// ==========================================
-let currentUser = { role: 'PUBLIC', email: '', fullName: 'ผู้เยี่ยมชม', status: 'GUEST' }; 
-let idleTime = 0;
-const IDLE_TIMEOUT_LIMIT = 15 * 60 * 1000; // 15 นาที
-let idleInterval;
+    // ==========================================
+    // FRONTEND AUTH & IDLE TIMEOUT LOGIC
+    // ==========================================
+    let currentUser = { role: 'PUBLIC', email: '', fullName: 'ผู้เยี่ยมชม', status: 'GUEST' };
+    let idleTime = 0;
+    const IDLE_TIMEOUT_LIMIT = 15 * 60 * 1000; // 15 นาที
+    let idleInterval;
 
-$(document).ready(function() {
-    // โหลดข้อมูลจาก LocalStorage
-    var savedUser = localStorage.getItem('ap_monitoring_user');
-    if(savedUser) {
-        currentUser = JSON.parse(savedUser);
-        updateUIBasedOnRole(currentUser);
-        if (currentUser.role === 'ADMIN' || currentUser.role === 'EDITOR') {
-            startIdleTimer();
-        }
-    } else {
-        updateUIBasedOnRole(currentUser);
-    }
-});
-
-// 1. ฟังก์ชันเปิดหน้าต่าง Login
-function performLogin() {
-    var modalEl = document.getElementById('loginModal');
-    if (!modalEl) {
-        Swal.fire('ข้อผิดพลาด', 'ไม่พบ Modal เข้าสู่ระบบ', 'error');
-        return;
-    }
-
-    // ย้าย Modal ไปที่ Body แบบตรงไปตรงมา ป้องกันโดนหน้าอื่นซ่อนไว้
-    if (modalEl.parentNode !== document.body) {
-        document.body.appendChild(modalEl);
-    }
-
-    // ล้างค่าเก่า
-    $('#loginEmailOnly').val('');
-    $('#btnLoginSubmit').html('ตรวจสอบสิทธิ์').prop('disabled', false);
-
-    // เปิด Modal ด้วย Bootstrap 5 
-    var myModal = bootstrap.Modal.getInstance(modalEl);
-    if (!myModal) {
-        myModal = new bootstrap.Modal(modalEl);
-    }
-    myModal.show();
-
-    // 🚀 [แก้ปัญหาพฤติกรรม 1] โฟกัสช่องกรอกอัตโนมัติ ทำให้คุณพิมพ์แล้ว "กด Enter" ได้เลยทันที!
-    setTimeout(function() {
-        $('#loginEmailOnly').focus();
-    }, 500);
-}
-
-// 2. ฟังก์ชันเมื่อกดยืนยัน (หรือกด Enter)
-function submitEmailLogin(e) {
-    if(e) e.preventDefault(); // ป้องกันหน้าเว็บรีเฟรช
-    
-    var email = $('#loginEmailOnly').val().trim();
-    if(!email) return;
-
-    var $btn = $('#btnLoginSubmit');
-    $btn.html('<i class="fas fa-spinner fa-spin me-1"></i> กำลังตรวจสอบ...').prop('disabled', true);
-
-    google.script.run
-        .withSuccessHandler(function(res) {
-            $btn.html('ตรวจสอบสิทธิ์').prop('disabled', false);
-            
-            if (!res) {
-                Swal.fire('ข้อผิดพลาด', 'เซิร์ฟเวอร์ไม่ตอบสนอง', 'error');
-                return;
-            }
-
-            if(res.status === 'success') {
-                currentUser = res.user;
-                localStorage.setItem('ap_monitoring_user', JSON.stringify(currentUser)); 
-                
-                updateUIBasedOnRole(currentUser);
-                startIdleTimer();
-                
-                // ============================================
-                // 🚀 [แก้ปัญหาพฤติกรรม 2,3,4] ปิด Modal อย่างถูกต้อง และล้างกระจกใสบังจอ 100%
-                // ============================================
-                var modalEl = document.getElementById('loginModal');
-                if (modalEl) {
-                    var bsModal = bootstrap.Modal.getInstance(modalEl);
-                    if (bsModal) bsModal.hide();
-                }
-                
-                // เคลียร์เศษซากของ Modal ทิ้ง เพื่อให้เมนู Dropdown กลับมากดได้ทันที!
-                setTimeout(function() {
-                    $('.modal-backdrop').remove();
-                    $('body').removeClass('modal-open').css({'padding-right': '', 'overflow': ''});
-                    $('#loginForm')[0].reset();
-                }, 400);
-                // ============================================
-                
-                Swal.fire({
-                    toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,
-                    icon: 'success', title: `ยินดีต้อนรับคุณ ${currentUser.firstName}`
-                });
-            } else {
-                Swal.fire('ปฏิเสธการเข้าถึง', res.message, 'error');
-            }
-        })
-        .withFailureHandler(function(err) {
-            $btn.html('ตรวจสอบสิทธิ์').prop('disabled', false);
-            Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว: ' + err.message, 'error');
-        })
-        .verifyEmailOnly(email); 
-}
-
-function performLogout() {
-    Swal.fire({
-        title: 'ออกจากระบบ',
-        text: "คุณต้องการปิดเซสชันและออกจากระบบใช่หรือไม่?",
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'ออกจากระบบ'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            if(currentUser && currentUser.email) {
-                google.script.run.logAuthAction(currentUser.email, currentUser.fullName, 'LOGOUT', 'ออกจากระบบโดยผู้ใช้');
-            }
-            
-            clearInterval(idleInterval);
-            $(document).off('mousemove keydown click scroll');
-            localStorage.removeItem('ap_monitoring_user'); 
-            
-            currentUser = { role: 'PUBLIC', email: '', fullName: 'ผู้เยี่ยมชม', status: 'GUEST' };
+    $(document).ready(function () {
+        // โหลดข้อมูลจาก LocalStorage
+        var savedUser = localStorage.getItem('ap_monitoring_user');
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
             updateUIBasedOnRole(currentUser);
-            switchPage('dashboard');
-            
-            Swal.fire({
-                toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,
-                icon: 'info', title: 'ออกจากระบบเรียบร้อย'
-            });
+            if (currentUser.role === 'ADMIN' || currentUser.role === 'EDITOR') {
+                startIdleTimer();
+            }
+        } else {
+            updateUIBasedOnRole(currentUser);
         }
     });
-}
 
-// 3. จัดการแสดงผล UI
-function updateUIBasedOnRole(user) {
-    $('#auth-loading').addClass('d-none');
+    // 1. ฟังก์ชันเปิดหน้าต่าง Login
+    function performLogin() {
+        var modalEl = document.getElementById('loginModal');
+        if (!modalEl) {
+            Swal.fire('ข้อผิดพลาด', 'ไม่พบ Modal เข้าสู่ระบบ', 'error');
+            return;
+        }
 
-    if (user.status === 'ACTIVE') {
-        $('#user-name-display').text(user.fullName);
-        let badgeColor = user.role === 'ADMIN' ? 'bg-danger' : 'bg-warning text-dark';
-        $('#user-role-badge').removeClass('bg-danger bg-warning text-dark bg-secondary').addClass(badgeColor).text(user.role);
-        
-        $('#user-badge, #btn-logout, #mobile-user-badge, #mobile-btn-logout').removeClass('d-none');
-        $('#btn-login, #mobile-btn-login').addClass('d-none');
-        $('#mobile-user-name').text(user.fullName + ` (${user.role})`);
-    } else {
-        $('#user-badge, #btn-logout, #mobile-user-badge, #mobile-btn-logout').addClass('d-none');
-        $('#btn-login, #mobile-btn-login').removeClass('d-none');
+        // ย้าย Modal ไปที่ Body แบบตรงไปตรงมา ป้องกันโดนหน้าอื่นซ่อนไว้
+        if (modalEl.parentNode !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+
+        // ล้างค่าเก่า
+        $('#loginEmailOnly').val('');
+        $('#btnLoginSubmit').html('ตรวจสอบสิทธิ์').prop('disabled', false);
+
+        // เปิด Modal ด้วย Bootstrap 5 
+        var myModal = bootstrap.Modal.getInstance(modalEl);
+        if (!myModal) {
+            myModal = new bootstrap.Modal(modalEl);
+        }
+        myModal.show();
+
+        // 🚀 [แก้ปัญหาพฤติกรรม 1] โฟกัสช่องกรอกอัตโนมัติ ทำให้คุณพิมพ์แล้ว "กด Enter" ได้เลยทันที!
+        setTimeout(function () {
+            $('#loginEmailOnly').focus();
+        }, 500);
     }
 
-    if (user.role === 'EDITOR' || user.role === 'ADMIN') {
-        $('#menu-transaction, #mobile-menu-transaction').removeClass('d-none');
-    } else {
-        $('#menu-transaction, #mobile-menu-transaction').addClass('d-none');
+    // 2. ฟังก์ชันเมื่อกดยืนยัน (หรือกด Enter)
+    function submitEmailLogin(e) {
+        if (e) e.preventDefault(); // ป้องกันหน้าเว็บรีเฟรช
+
+        var email = $('#loginEmailOnly').val().trim();
+        if (!email) return;
+
+        var $btn = $('#btnLoginSubmit');
+        $btn.html('<i class="fas fa-spinner fa-spin me-1"></i> กำลังตรวจสอบ...').prop('disabled', true);
+
+        google.script.run
+            .withSuccessHandler(function (res) {
+                $btn.html('ตรวจสอบสิทธิ์').prop('disabled', false);
+
+                if (!res) {
+                    Swal.fire('ข้อผิดพลาด', 'เซิร์ฟเวอร์ไม่ตอบสนอง', 'error');
+                    return;
+                }
+
+                if (res.status === 'success') {
+                    currentUser = res.user;
+                    localStorage.setItem('ap_monitoring_user', JSON.stringify(currentUser));
+
+                    updateUIBasedOnRole(currentUser);
+                    startIdleTimer();
+
+                    // ============================================
+                    // 🚀 [แก้ปัญหาพฤติกรรม 2,3,4] ปิด Modal อย่างถูกต้อง และล้างกระจกใสบังจอ 100%
+                    // ============================================
+                    var modalEl = document.getElementById('loginModal');
+                    if (modalEl) {
+                        var bsModal = bootstrap.Modal.getInstance(modalEl);
+                        if (bsModal) bsModal.hide();
+                    }
+
+                    // เคลียร์เศษซากของ Modal ทิ้ง เพื่อให้เมนู Dropdown กลับมากดได้ทันที!
+                    setTimeout(function () {
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open').css({ 'padding-right': '', 'overflow': '' });
+                        $('#loginForm')[0].reset();
+                    }, 400);
+                    // ============================================
+
+                    Swal.fire({
+                        toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,
+                        icon: 'success', title: `ยินดีต้อนรับคุณ ${currentUser.firstName}`
+                    });
+                } else {
+                    Swal.fire('ปฏิเสธการเข้าถึง', res.message, 'error');
+                }
+            })
+            .withFailureHandler(function (err) {
+                $btn.html('ตรวจสอบสิทธิ์').prop('disabled', false);
+                Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว: ' + err.message, 'error');
+            })
+            .verifyEmailOnly(email);
     }
 
-    if (user.role === 'ADMIN') {
-        $('#menu-admin-dropdown, #mobile-menu-admin').removeClass('d-none'); 
-    } else {
-        $('#menu-admin-dropdown, #mobile-menu-admin').addClass('d-none');    
+    function performLogout() {
+        Swal.fire({
+            title: 'ออกจากระบบ',
+            text: "คุณต้องการปิดเซสชันและออกจากระบบใช่หรือไม่?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'ออกจากระบบ'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (currentUser && currentUser.email) {
+                    google.script.run.logAuthAction(currentUser.email, currentUser.fullName, 'LOGOUT', 'ออกจากระบบโดยผู้ใช้');
+                }
+
+                clearInterval(idleInterval);
+                $(document).off('mousemove keydown click scroll');
+                localStorage.removeItem('ap_monitoring_user');
+
+                currentUser = { role: 'PUBLIC', email: '', fullName: 'ผู้เยี่ยมชม', status: 'GUEST' };
+                updateUIBasedOnRole(currentUser);
+                switchPage('dashboard');
+
+                Swal.fire({
+                    toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,
+                    icon: 'info', title: 'ออกจากระบบเรียบร้อย'
+                });
+            }
+        });
     }
-}
 
-// ==========================================
-// IDLE TIMEOUT SYSTEM
-// ==========================================
-function startIdleTimer() {
-    $(document).on('mousemove keydown click scroll', function() { idleTime = 0; });
-    idleInterval = setInterval(function() {
-        idleTime += 1000;
-        if (idleTime >= IDLE_TIMEOUT_LIMIT) triggerSessionTimeout();
-    }, 1000);
-}
+    // 3. จัดการแสดงผล UI
+    function updateUIBasedOnRole(user) {
+        $('#auth-loading').addClass('d-none');
 
-function triggerSessionTimeout() {
-    clearInterval(idleInterval);
-    $(document).off('mousemove keydown click scroll'); 
-    google.script.run.logAuthAction(currentUser.email, currentUser.fullName, 'SESSION_TIMEOUT', 'เซสชันหมดอายุ (15 นาที)');
-    
-    localStorage.removeItem('ap_monitoring_user');
-    currentUser = { role: 'PUBLIC', email: '', fullName: 'ผู้เยี่ยมชม', status: 'GUEST' };
-    updateUIBasedOnRole(currentUser);
-    switchPage('dashboard');
-    
-    Swal.fire({ title: 'เซสชันหมดอายุ', text: 'ไม่ได้ใช้งานระบบเป็นเวลา 15 นาที ระบบได้ออกจากระบบอัตโนมัติ', icon: 'warning', confirmButtonColor: '#006400', confirmButtonText: 'ตกลง' });
-}
+        if (user.status === 'ACTIVE') {
+            $('#user-name-display').text(user.fullName);
+            let badgeColor = user.role === 'ADMIN' ? 'bg-danger' : 'bg-warning text-dark';
+            $('#user-role-badge').removeClass('bg-danger bg-warning text-dark bg-secondary').addClass(badgeColor).text(user.role);
 
-// ==========================================
-// ADMIN PANEL LOGIC
-// ==========================================
-function loadAdminUsers() {
-    if (currentUser.role !== 'ADMIN') return;
-    $('#userTableBody').html('<tr><td colspan="6" class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i></td></tr>');
-    google.script.run.withSuccessHandler(function(users) {
-        if ($.fn.DataTable.isDataTable('#tableUsers')) { $('#tableUsers').DataTable().destroy(); }
-        var tbody = $('#userTableBody').empty();
-        users.forEach(u => {
-            let roleBadge = u.role === 'ADMIN' ? 'bg-danger' : (u.role === 'EDITOR' ? 'bg-warning text-dark' : 'bg-secondary');
-            let statusBadge = u.status === 'ACTIVE' ? 'bg-success' : 'bg-dark';
-            tbody.append(`
+            $('#user-badge, #btn-logout, #mobile-user-badge, #mobile-btn-logout').removeClass('d-none');
+            $('#btn-login, #mobile-btn-login').addClass('d-none');
+            $('#mobile-user-name').text(user.fullName + ` (${user.role})`);
+        } else {
+            $('#user-badge, #btn-logout, #mobile-user-badge, #mobile-btn-logout').addClass('d-none');
+            $('#btn-login, #mobile-btn-login').removeClass('d-none');
+        }
+
+        if (user.role === 'EDITOR' || user.role === 'ADMIN') {
+            $('#menu-transaction, #mobile-menu-transaction').removeClass('d-none');
+        } else {
+            $('#menu-transaction, #mobile-menu-transaction').addClass('d-none');
+        }
+
+        if (user.role === 'ADMIN') {
+            $('#menu-admin-dropdown, #mobile-menu-admin').removeClass('d-none');
+        } else {
+            $('#menu-admin-dropdown, #mobile-menu-admin').addClass('d-none');
+        }
+    }
+
+    // ==========================================
+    // IDLE TIMEOUT SYSTEM
+    // ==========================================
+    function startIdleTimer() {
+        $(document).on('mousemove keydown click scroll', function () { idleTime = 0; });
+        idleInterval = setInterval(function () {
+            idleTime += 1000;
+            if (idleTime >= IDLE_TIMEOUT_LIMIT) triggerSessionTimeout();
+        }, 1000);
+    }
+
+    function triggerSessionTimeout() {
+        clearInterval(idleInterval);
+        $(document).off('mousemove keydown click scroll');
+        google.script.run.logAuthAction(currentUser.email, currentUser.fullName, 'SESSION_TIMEOUT', 'เซสชันหมดอายุ (15 นาที)');
+
+        localStorage.removeItem('ap_monitoring_user');
+        currentUser = { role: 'PUBLIC', email: '', fullName: 'ผู้เยี่ยมชม', status: 'GUEST' };
+        updateUIBasedOnRole(currentUser);
+        switchPage('dashboard');
+
+        Swal.fire({ title: 'เซสชันหมดอายุ', text: 'ไม่ได้ใช้งานระบบเป็นเวลา 15 นาที ระบบได้ออกจากระบบอัตโนมัติ', icon: 'warning', confirmButtonColor: '#006400', confirmButtonText: 'ตกลง' });
+    }
+
+    // ==========================================
+    // ADMIN PANEL LOGIC
+    // ==========================================
+    function loadAdminUsers() {
+        if (currentUser.role !== 'ADMIN') return;
+        $('#userTableBody').html('<tr><td colspan="6" class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i></td></tr>');
+        google.script.run.withSuccessHandler(function (users) {
+            if ($.fn.DataTable.isDataTable('#tableUsers')) { $('#tableUsers').DataTable().destroy(); }
+            var tbody = $('#userTableBody').empty();
+            users.forEach(u => {
+                let roleBadge = u.role === 'ADMIN' ? 'bg-danger' : (u.role === 'EDITOR' ? 'bg-warning text-dark' : 'bg-secondary');
+                let statusBadge = u.status === 'ACTIVE' ? 'bg-success' : 'bg-dark';
+                tbody.append(`
                 <tr>
                     <td class="ps-4 fw-bold">${u.email}</td>
                     <td>${u.firstName} ${u.lastName}</td>
@@ -219,24 +219,24 @@ function loadAdminUsers() {
                     </td>
                 </tr>
             `);
+            });
+            $('#tableUsers').DataTable({ "pageLength": 10, "language": { "search": "ค้นหา:" } });
+        }).getAllUsers();
+    }
+    function openUserModal() { $('#userForm')[0].reset(); $('#u_email').prop('readonly', false); new bootstrap.Modal(document.getElementById('userModal')).show(); }
+    function editUser(user) { $('#u_email').val(user.email).prop('readonly', true); $('#u_fname').val(user.firstName); $('#u_lname').val(user.lastName); $('#u_pos').val(user.position); $('#u_dept').val(user.department); $('#u_phone').val(user.phone); $('#u_role').val(user.role); $('#u_status').val(user.status); new bootstrap.Modal(document.getElementById('userModal')).show(); }
+    function saveUserSubmit(e) {
+        e.preventDefault();
+        var formData = { email: $('#u_email').val(), firstName: $('#u_fname').val(), lastName: $('#u_lname').val(), position: $('#u_pos').val(), department: $('#u_dept').val(), phone: $('#u_phone').val(), role: $('#u_role').val(), status: $('#u_status').val() };
+        $('#btnSaveUser').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>กำลังบันทึก...');
+        google.script.run.withSuccessHandler(function (res) {
+            $('#btnSaveUser').prop('disabled', false).html('<i class="fas fa-save me-2"></i>บันทึก');
+            if (res.status === 'success') { Swal.fire('สำเร็จ', res.message, 'success'); bootstrap.Modal.getInstance(document.getElementById('userModal')).hide(); loadAdminUsers(); } else { Swal.fire('Error', res.message, 'error'); }
+        }).saveUser(formData);
+    }
+    function deleteUserRow(email) {
+        Swal.fire({ title: 'ยืนยันการลบ', text: `ลบผู้ใช้ ${email} ใช่หรือไม่?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545', confirmButtonText: 'ลบ' }).then((res) => {
+            if (res.isConfirmed) { Swal.showLoading(); google.script.run.withSuccessHandler(r => { if (r.status === 'success') { Swal.fire('ลบสำเร็จ', '', 'success'); loadAdminUsers(); } else { Swal.fire('Error', r.message, 'error'); } }).deleteUser(email); }
         });
-        $('#tableUsers').DataTable({"pageLength": 10, "language": {"search": "ค้นหา:"}});
-    }).getAllUsers();
-}
-function openUserModal() { $('#userForm')[0].reset(); $('#u_email').prop('readonly', false); new bootstrap.Modal(document.getElementById('userModal')).show(); }
-function editUser(user) { $('#u_email').val(user.email).prop('readonly', true); $('#u_fname').val(user.firstName); $('#u_lname').val(user.lastName); $('#u_pos').val(user.position); $('#u_dept').val(user.department); $('#u_phone').val(user.phone); $('#u_role').val(user.role); $('#u_status').val(user.status); new bootstrap.Modal(document.getElementById('userModal')).show(); }
-function saveUserSubmit(e) {
-    e.preventDefault();
-    var formData = { email: $('#u_email').val(), firstName: $('#u_fname').val(), lastName: $('#u_lname').val(), position: $('#u_pos').val(), department: $('#u_dept').val(), phone: $('#u_phone').val(), role: $('#u_role').val(), status: $('#u_status').val() };
-    $('#btnSaveUser').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>กำลังบันทึก...');
-    google.script.run.withSuccessHandler(function(res) {
-        $('#btnSaveUser').prop('disabled', false).html('<i class="fas fa-save me-2"></i>บันทึก');
-        if(res.status === 'success') { Swal.fire('สำเร็จ', res.message, 'success'); bootstrap.Modal.getInstance(document.getElementById('userModal')).hide(); loadAdminUsers(); } else { Swal.fire('Error', res.message, 'error'); }
-    }).saveUser(formData);
-}
-function deleteUserRow(email) {
-    Swal.fire({ title: 'ยืนยันการลบ', text: `ลบผู้ใช้ ${email} ใช่หรือไม่?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545', confirmButtonText: 'ลบ' }).then((res) => {
-        if(res.isConfirmed) { Swal.showLoading(); google.script.run.withSuccessHandler(r => { if(r.status === 'success') { Swal.fire('ลบสำเร็จ', '', 'success'); loadAdminUsers(); } else { Swal.fire('Error', r.message, 'error'); } }).deleteUser(email); }
-    });
-}
+    }
 </script>
