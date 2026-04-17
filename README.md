@@ -42,14 +42,23 @@ Loei Provincial Public Health Office Budget Management Dashboard
 - Backend Logic (code.gs, Auth.gs): สมองฝั่งหลังบ้าน (Google Apps Script) ทำหน้าที่เชื่อมต่อและคำนวณข้อมูลลง Google Sheets โดยตรง (Database)
 - Sub-Modules (summary.html, masterplan_ui.html, auth_ui.html): ส่วนประกอบย่อยของหน้าจอที่ถูกแยกไฟล์ไว้เพื่อให้โค้ดอ่านง่ายและไม่ยาวจนเกินไป
 
-<img width="1851" height="908" alt="image" src="https://github.com/user-attachments/assets/c183c65a-c8f9-4520-b60a-0bf5d2578f55" />
-
-
-
 Dashboard
-<img width="1825" height="2182" alt="image" src="https://github.com/user-attachments/assets/0c830373-f36b-48f9-94dc-c04a838c8744" />
+<img width="1905" height="1757" alt="image" src="https://github.com/user-attachments/assets/50e6f78d-19b9-419c-af6f-3898af59bf6e" />
 
-รายงานสรุป (Executive Summary)
-<img width="1830" height="3270" alt="image" src="https://github.com/user-attachments/assets/a1bebd89-7b57-4b14-a1c9-09d019173698" />
+Serach Action Plan
+<img width="1905" height="1305" alt="image" src="https://github.com/user-attachments/assets/7f7d423c-8e52-469a-b497-04ee98f38b30" />
+
+Yearly Plan
+<img width="1909" height="1305" alt="image" src="https://github.com/user-attachments/assets/cb2f2154-134c-4e58-a8a1-a770b1c7f919" />
+
+Yearly Plan Detail
+<img width="1904" height="1080" alt="image" src="https://github.com/user-attachments/assets/b878e4e9-16d5-4f93-a21f-2aa3e52b0a4a" />
+
+Executive Summary
+<img width="1910" height="2433" alt="image" src="https://github.com/user-attachments/assets/8e20e722-f589-45a8-9fba-761798f0b747" />
+
+
+
+
 
 
