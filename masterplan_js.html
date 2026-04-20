@@ -98,10 +98,18 @@
         });
 
         dtMasterPlan = $('#tableMasterPlan').DataTable({
-            pageLength: 25,
-            ordering: true,
-            columnDefs: [{ targets: [0, 8], orderable: false }],
-            language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/th.json' }
+            responsive: true,
+            "pageLength": 10,
+            "lengthChange": true,
+            "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
+            "searching": true,
+            "ordering": false,
+            "language": {
+                "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
+                "search": "ค้นหา:",
+                "paginate": { "next": ">", "previous": "<" },
+                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ"
+            }
         });
     }
 

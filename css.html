@@ -331,4 +331,44 @@
   #app-loading-overlay .loading-content {
     text-align: center;
   }
+
+  /* 2. Sticky Table Header: ตรึงหัวตารางไว้ด้านบนเวลาเลื่อนดูข้อมูลเยอะๆ */
+  .table-responsive {
+    max-height: 65vh;
+    overflow-y: auto;
+    border-radius: 0.5rem;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 🎯 คืนค่าสีหัวตารางให้เป็นไปตาม Theme ของแต่ละหน้า */
+  thead.bg-light th {
+    background-color: #f8f9fa !important;
+    color: #495057 !important;
+  }
+
+  thead.bg-success th {
+    background-color: #198754 !important;
+    color: #ffffff !important;
+  }
+
+  thead.bg-warning th {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+  }
+
+  thead.bg-dark th {
+    background-color: #212529 !important;
+    color: #ffffff !important;
+  }
+
+  thead.bg-primary th {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+  }
 </style>
