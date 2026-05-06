@@ -4,7 +4,12 @@
 <head>
     <base target="_top">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap" rel="stylesheet"> -->
+    <!-- <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -310,7 +315,7 @@
             </div>
             <div class="card border-0 shadow-sm mb-4 sticky-filter-panel">
                 <div class="card-body bg-light rounded-3 py-3">
-                    <div class="row g-2 mb-3">
+                    <div class="row g-2 mb-2">
                         <div class="col-12 col-md-3">
                             <select id="searchDeptSelect" class="form-select form-select-sm" style="width: 100%;">
                                 <option value="">-- ทุกกลุ่มงาน --</option>
@@ -356,48 +361,47 @@
                                 <option value="11">ก.ย.</option>
                             </select>
                         </div>
+                    </div>
+
+                    <div class="row g-2 align-items-center">
+                        <div class="col-12 col-md-11">
+                            <div class="input-group input-group-sm shadow-sm">
+                                <span class="input-group-text bg-white border-end-0"><i
+                                        class="fas fa-search text-muted"></i></span>
+                                <input type="text" id="searchKeyword" class="form-control border-start-0 ps-0"
+                                    placeholder="พิมพ์คำค้นหา (ค้นหาจาก ชื่อโครงการ, กิจกรรมหลัก, กิจกรรมย่อย)..."
+                                    onkeyup="if(event.keyCode===13) runSearch()">
+                            </div>
+                        </div>
                         <div class="col-12 col-md-1 d-flex gap-1">
-                            <button class="btn btn-sm btn-primary flex-grow-1" onclick="runSearch()"><i
-                                    class="fas fa-search"></i></button>
-                            <button class="btn btn-sm btn-light border flex-grow-1" onclick="resetSearch()"><i
-                                    class="fas fa-undo"></i></button>
+                            <button class="btn btn-sm btn-primary flex-grow-1 shadow-sm" onclick="runSearch()"
+                                title="ค้นหา"><i class="fas fa-search"></i></button>
+                            <button class="btn btn-sm btn-light border flex-grow-1 shadow-sm" onclick="resetSearch()"
+                                title="ล้างค่า"><i class="fas fa-undo"></i></button>
                         </div>
                     </div>
+
                 </div>
             </div>
 
-            <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                    <div class="card-metric bg-white border border-2 border-info h-100" style="min-height: 100px;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="card-label text-info">จำนวนโครงการ</div>
-                                <div class="card-value text-info" id="sum-count">0</div>
-                                <div class="small text-muted">โครงการ</div>
-                            </div><i class="fas fa-layer-group fa-3x text-info opacity-25"></i>
-                        </div>
-                    </div>
+            <!-- search page summary card -->
+            <div
+                class="alert alert-light border shadow-sm py-2 px-3 mb-3 d-flex flex-wrap align-items-center justify-content-between rounded-3">
+                <div class="text-dark fw-bold mb-2 mb-md-0">
+                    <i class="fas fa-search text-primary me-2"></i>สรุปผลการค้นหา
                 </div>
-                <div class="col-md-4">
-                    <div class="card-metric bg-white border border-2 border-primary h-100" style="min-height: 100px;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="card-label text-primary">รวมขออนุมัติ</div>
-                                <div class="card-value text-primary" id="sum-approved">0.00</div>
-                                <div class="small text-muted">บาท</div>
-                            </div><i class="fas fa-file-invoice-dollar fa-3x text-primary opacity-25"></i>
-                        </div>
+                <div class="d-flex flex-wrap gap-4 small fw-bold">
+                    <div class="text-secondary">
+                        <i class="fas fa-project-diagram me-1"></i>จำนวน: <span id="sum-count"
+                            class="text-dark fs-6 ms-1">0</span> โครงการ
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card-metric bg-white border border-2 border-success h-100" style="min-height: 100px;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="card-label text-success">รวมจัดสรร</div>
-                                <div class="card-value text-success" id="sum-allocated">0.00</div>
-                                <div class="small text-muted">บาท</div>
-                            </div><i class="fas fa-coins fa-3x text-success opacity-25"></i>
-                        </div>
+                    <div class="text-info">
+                        <i class="fas fa-clipboard-check me-1"></i>รวมอนุมัติ: <span id="sum-approved"
+                            class="text-dark fs-6 ms-1">0.00</span> บาท
+                    </div>
+                    <div class="text-success">
+                        <i class="fas fa-hand-holding-usd me-1"></i>รวมจัดสรร: <span id="sum-allocated"
+                            class="text-dark fs-6 ms-1">0.00</span> บาท
                     </div>
                 </div>
             </div>
@@ -496,38 +500,25 @@
                     </div>
                 </div>
             </div>
-            <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                    <div class="card-metric bg-white border border-2 border-info h-100" style="min-height: 100px;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="card-label text-info">จำนวนโครงการ</div>
-                                <div class="card-value text-info" id="yp-count">0</div>
-                                <div class="small text-muted">โครงการ</div>
-                            </div><i class="fas fa-layer-group fa-3x text-info opacity-25"></i>
-                        </div>
-                    </div>
+
+            <!-- yearly summary card -->
+            <div
+                class="alert alert-light border shadow-sm py-2 px-3 mb-3 d-flex flex-wrap align-items-center justify-content-between rounded-3">
+                <div class="text-dark fw-bold mb-2 mb-md-0">
+                    <i class="fas fa-chart-bar text-primary me-2"></i>สรุปผลแผนงานประจำปี
                 </div>
-                <div class="col-md-4">
-                    <div class="card-metric bg-white border border-2 border-primary h-100" style="min-height: 100px;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="card-label text-primary">รวมขออนุมัติ</div>
-                                <div class="card-value text-primary" id="yp-approved">0.00</div>
-                                <div class="small text-muted">บาท</div>
-                            </div><i class="fas fa-file-invoice-dollar fa-3x text-primary opacity-25"></i>
-                        </div>
+                <div class="d-flex flex-wrap gap-4 small fw-bold">
+                    <div class="text-secondary">
+                        <i class="fas fa-project-diagram me-1"></i>จำนวน: <span id="yearly-count"
+                            class="text-dark fs-6 ms-1">0</span> โครงการ
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card-metric bg-white border border-2 border-success h-100" style="min-height: 100px;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="card-label text-success">รวมจัดสรร</div>
-                                <div class="card-value text-success" id="yp-allocated">0.00</div>
-                                <div class="small text-muted">บาท</div>
-                            </div><i class="fas fa-coins fa-3x text-success opacity-25"></i>
-                        </div>
+                    <div class="text-success">
+                        <i class="fas fa-hand-holding-usd me-1"></i>รวมจัดสรร: <span id="yearly-allocated"
+                            class="text-dark fs-6 ms-1">0.00</span> บาท
+                    </div>
+                    <div class="text-danger">
+                        <i class="fas fa-file-invoice-dollar me-1"></i>รวมเบิกจ่าย: <span id="yearly-spent"
+                            class="text-dark fs-6 ms-1">0.00</span> บาท
                     </div>
                 </div>
             </div>
@@ -743,7 +734,7 @@
                             <i class="fas fa-file-excel me-2"></i>ส่งออก Excel
                         </button>
 
-                        <button class="btn btn-primary shadow-sm px-4 py-2 rounded-pill" onclick="openAddPlanModal()">
+                        <button class="btn btn-primary shadow-sm px-4 py-2 rounded-pill" onclick="openAllocModal()">
                             <i class="fas fa-plus-circle me-2"></i>จัดสรรงบประมาณ
                         </button>
                     </div>
@@ -794,6 +785,7 @@
                                 style="width:100%">
                                 <thead class="bg-warning text-dark">
                                     <tr>
+                                        <th class="text-center" style="width: 50px;">ลำดับ</th>
                                         <th class="ps-4 py-3 text-nowrap">วันที่จัดสรร</th>
                                         <th class="text-nowrap">กลุ่มงาน/งาน</th>
                                         <th style="min-width: 350px;">รายละเอียดโครงการ / กิจกรรม</th>
@@ -801,6 +793,7 @@
                                         <th class="text-end text-nowrap">จัดสรร (เดิม)</th>
                                         <th class="text-end text-nowrap">จัดสรรครั้งนี้</th>
                                         <th class="text-end pe-4 text-nowrap">ยอดจัดสรรรวม</th>
+                                        <th class="text-center">จัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="allocHistoryBody"></tbody>

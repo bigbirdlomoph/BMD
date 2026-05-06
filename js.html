@@ -18,6 +18,32 @@
     // Mapping เดือนตามปีงบประมาณ
     var trackMonthNames = ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'];
 
+    // ==========================================
+    // 📌 ศูนย์กลางตั้งค่า DataTables (Centralized Config)
+    // ==========================================
+    function getBaseDataTableConfig(customOptions = {}) {
+        let baseConfig = {
+            responsive: true,
+            pageLength: 10,
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
+            ordering: false,
+            dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                "<'row'<'col-sm-12 table-scrollable'tr>>" +
+                "<'row mt-3 align-items-center'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7 d-flex justify-content-end'p>>",
+            language: {
+                lengthMenu: "แสดง _MENU_ รายการต่อหน้า",
+                search: "ค้นหา:",
+                paginate: { next: ">", previous: "<" },
+                info: "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                infoEmpty: "แสดง 0 ถึง 0 จาก 0 รายการ",
+                infoFiltered: "(กรองจากทั้งหมด _MAX_ รายการ)"
+            }
+        };
+        // ผสานค่าพื้นฐาน เข้ากับ ค่าเฉพาะตารางที่ส่งมา
+        return $.extend(true, {}, baseConfig, customOptions);
+    }
+
     function switchPage(pageId, element) {
         $('.page-section').addClass('d-none');
         $('#' + pageId + '-page').removeClass('d-none');
@@ -458,11 +484,17 @@
         }).getTransactionHistory();
     }
 
+    // ==========================================
+    // 📌 ฟังก์ชันวาดตาราง ประวัติการเบิกจ่ายงบประมาณ
+    // ==========================================
     function renderTxTable(rows) {
+        // 🌟 ใช้ ID ให้ตรงกับหน้า HTML ของเจ้านายเป๊ะๆ
         if ($.fn.DataTable.isDataTable('#tableTxHistoryNew')) {
             $('#tableTxHistoryNew').DataTable().destroy();
         }
+
         var tbody = $('#txHistoryTable').empty();
+
         if (!rows || rows.length === 0) {
             tbody.append('<tr><td colspan="9" class="text-center py-5 text-muted">ไม่พบข้อมูลประวัติการเบิกจ่าย</td></tr>');
             return;
@@ -474,46 +506,71 @@
             var masterSpent = r.masterSpent ? Number(r.masterSpent).toLocaleString() : '-';
             var masterBal = r.masterBalance ? Number(r.masterBalance).toLocaleString() : '-';
 
+            // 🌟 1. สร้าง Badge (ประเภทงบ และ แหล่งงบ)
+            var badgeType = r.type ? `<span class="badge bg-primary text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${r.type}</span>` : '';
+            var badgeSource = r.source ? `<span class="badge bg-secondary text-white border shadow-sm"><i class="fas fa-wallet me-1"></i>${r.source}</span>` : '';
+
+            // 🌟 2. จัดรูปแบบชื่อโครงการ
+            var projHTML = `<div class="fw-bold text-primary text-wrap mt-2" style="font-size: 0.95rem;">${r.project || r.proj || '-'}</div>`;
+
+            // 🌟 3. จัดรูปแบบกิจกรรมหลัก 
+            var actText = r.activity || r.act || '';
+            var actHTML = '';
+            if (actText) {
+                let formattedAct = String(actText).replace(/\n/g, '<br>');
+                actHTML = `
+                <div class="text-secondary small fw-bold mt-1" style="padding-left: 0.5rem;">
+                    <i class="fas fa-level-up-alt fa-rotate-90 me-1 text-muted"></i> กิจกรรมหลัก : ${formattedAct}
+                </div>`;
+            }
+
+            // 🌟 4. จัดรูปแบบกิจกรรมย่อย 
+            var subText = r.subActivity || r.subAct || r.sub || '';
+            var subHTML = '';
+            if (subText) {
+                let formattedSub = String(subText).replace(/\n/g, '<br>');
+                subHTML = `
+                <div class="small text-info mt-1" style="padding-left: 1.5rem; line-height: 1.6;">
+                    <i class="fas fa-level-up-alt fa-rotate-90 me-1"></i> กิจกรรมย่อย : <br>
+                    <div style="padding-left: 1.2rem; margin-top: 2px;" class="text-muted">${formattedSub}</div>
+                </div>`;
+            }
+
+            // 🌟 วาดแถวตาราง
             tbody.append(`
             <tr>
-                <td class="text-center text-muted small fw-bold">${r.order}</td>
-                <td class="text-nowrap small">${r.date}</td>
-                <td>
-                    <div class="fw-bold text-dark text-wrap" style="font-size: 0.95rem;">${r.project || '-'}</div>
-                    <div class="small text-muted text-wrap mt-1"><i class="fas fa-angle-right me-1"></i>${r.activity || ''}</div>
+                <td class="text-center text-muted small fw-bold align-middle">${r.order || '-'}</td>
+                <td class="text-nowrap small align-middle">${r.date || '-'}</td>
+                <td class="align-middle py-3">
+                    <div class="mb-1">${badgeType}${badgeSource}</div>
+                    ${projHTML}
+                    ${actHTML}
+                    ${subHTML}
                 </td>
-                <td>
-                    <div class="text-wrap small text-secondary mb-1">${r.desc || '-'}</div>
-                    <span class="badge bg-secondary bg-opacity-25 text-dark border">${r.type || ''}</span>
-                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 ms-1">${r.source || ''}</span>
+                <td class="align-middle">
+                    <div class="text-wrap small text-secondary">${r.desc || '-'}</div>
                 </td>
-                <td class="text-end pe-4"><span class="h6 fw-bold text-dark mb-0">${amountShow}</span></td>
-                <td class="text-end text-primary bg-light bg-opacity-25 small">${masterAlloc}</td>
-                <td class="text-end text-warning text-opacity-75 bg-light bg-opacity-25 small">${masterSpent}</td>
-                <td class="text-end text-success fw-bold bg-light bg-opacity-50">${masterBal}</td>
-                <td class="text-center">
-                   <div class="btn-group" role="group">
-                        <button class="btn btn-sm btn-outline-danger fw-bold shadow-sm" title="ลบรายการ" onclick="deleteTx(${r.rowId}, '${r.id}', ${r.amount})">
-                            <i class="fas fa-trash-alt me-1"></i> ลบ
+                <td class="text-end pe-4 align-middle"><span class="h6 fw-bold text-dark mb-0">${amountShow}</span></td>
+                <td class="text-end text-primary bg-light bg-opacity-25 small align-middle">${masterAlloc}</td>
+                <td class="text-end text-primary fw-bold bg-light bg-opacity-25 small align-middle">${masterSpent}</td>
+                <td class="text-end text-success fw-bold bg-light bg-opacity-50 align-middle">${masterBal}</td>
+                <td class="text-center align-middle">
+                   <div class="d-flex justify-content-center gap-2">
+                        <button class="btn btn-sm btn-outline-warning px-2 py-1 shadow-sm" title="แก้ไขรายการ" onclick="editTransaction('${r.rowId}', '${r.id}', ${r.amount})">
+                            <i class="fas fa-edit fs-6"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger px-2 py-1 shadow-sm" title="ลบรายการ" onclick="deleteTx(${r.rowId}, '${r.id}', ${r.amount})">
+                            <i class="fas fa-trash-alt fs-6"></i>
                         </button>
                    </div>
                 </td>
             </tr>`);
         });
 
-        $('#tableTxHistoryNew').DataTable({
-            responsive: true,
-            "pageLength": 10,
-            "lengthChange": true,
-            "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
-            "searching": false,
-            "ordering": false,
-            "language": {
-                "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
-                "paginate": { "next": ">", "previous": "<" },
-                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ"
-            }
-        });
+        // 🎯 เรียกใช้ DataTables จากฟังก์ชันกลาง
+        $('#tableTxHistoryNew').DataTable(getBaseDataTableConfig({
+            searching: false
+        }));
     }
 
     // ==========================================
@@ -717,70 +774,170 @@
         }).getLoanHistory();
     }
 
+    // ==========================================
+    // 📌 ฟังก์ชันวาดตาราง รายการเงินยืมงบประมาณ (ฉบับอัปเกรด: แก้ไข + คืนเงิน + ลบ)
+    // ==========================================
     function renderLoanTable(rows) {
-        if ($.fn.DataTable.isDataTable('#tableLoanHistory')) {
-            $('#tableLoanHistory').DataTable().destroy();
+        let tableId = '#tableLoanHistoryNew';
+        if (!$(tableId).length) tableId = '#tableLoan';
+        if (!$(tableId).length) tableId = '#tableLoanHistory';
+
+        if ($.fn.DataTable.isDataTable(tableId)) {
+            $(tableId).DataTable().destroy();
         }
+
         var tbody = $('#loanHistoryTable').empty();
-        if (rows && rows.length > 0) {
-            rows.forEach(r => {
-                var activityHtml = `<div class="fw-bold text-dark text-wrap" style="font-size: 0.95rem;">${r.project}</div>`;
-                if (r.activity) activityHtml += `<div class="small text-muted text-wrap mt-1"><i class="fas fa-tasks me-1 opacity-50"></i>${r.activity}</div>`;
+        if (!tbody.length) tbody = $('#loanTableBody').empty();
+        if (!tbody.length) tbody = $('#tableLoanBody').empty();
 
-                var amt = Number(r.amount).toLocaleString();
-                var paidAmt = Number(r.paid).toLocaleString();
-                var statusBadge = '';
-                if (r.balance <= 0) statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">คืนครบแล้ว</span>';
-                else if (r.paid > 0) statusBadge = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3">คืนบางส่วน</span>';
-                else statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3">ยังไม่คืน</span>';
-
-                // --- 🎯 สร้างปุ่มจัดการ (คืนเงิน + ลบ) ---
-                var btnHtml = `<div class="d-flex gap-1">`;
-                if (r.balance <= 0) {
-                    btnHtml += `<button class="btn btn-sm text-secondary flex-grow-1" style="background-color: #f8f9fa; border: 1px dashed #dee2e6;" disabled><i class="fas fa-check-circle me-1 text-success"></i>คืนครบ</button>`;
-                } else {
-                    btnHtml += `<button class="btn btn-sm btn-outline-success flex-grow-1 shadow-sm" title="คืนเงิน/เคลียร์บิล" onclick="openRepaymentModal('${r.projectId}', '${r.project}', ${r.amount}, ${r.balance})"><i class="fas fa-hand-holding-usd"></i> คืนเงิน</button>`;
-                }
-
-                // 🗑️ ปุ่มลบรายการยืมเงิน
-                btnHtml += `<button class="btn btn-sm btn-outline-danger shadow-sm" title="ยกเลิก/ลบรายการยืม" onclick="deleteLoanTx(${r.rowId}, '${r.projectId}', ${r.amount})"><i class="fas fa-trash-alt"></i></button>`;
-                btnHtml += `</div>`;
-
-                var budgetTypeClass = String(r.budgetType).includes('เงินนอก') ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-dark border';
-                var budgetInfo = `<span class="badge ${budgetTypeClass} fw-normal mb-1">${r.budgetType || '-'}</span>
-                                  <div class="small text-dark fw-bold text-wrap" style="font-size: 0.8rem;">${r.budgetSource || ''}</div>`;
-
-                tbody.append(`
-                    <tr>
-                        <td class="text-center fw-bold text-secondary small">${r.order}</td>
-                        <td>${activityHtml}</td>
-                        <td>
-                            <div class="fw-bold text-dark text-nowrap">${r.date}</div>
-                            <div class="mt-1">${statusBadge}</div>
-                        </td>
-                        <td class="text-end fw-bold text-primary">${amt}</td>
-                        <td class="text-end text-success">${paidAmt}</td>
-                        <td>${budgetInfo}</td>
-                        <td><div class="text-wrap small text-muted" style="max-width: 150px;">${r.desc || '-'}</div></td>
-                        <td class="text-center align-middle">${btnHtml}</td>
-                    </tr>`);
-            });
-        } else {
-            tbody.append('<tr><td colspan="8" class="text-center py-5 text-muted">ไม่พบข้อมูลประวัติการยืมเงิน</td></tr>');
+        if (!rows || rows.length === 0) {
+            tbody.append('<tr><td colspan="8" class="text-center py-5 text-muted">ไม่พบข้อมูลประวัติเงินยืม</td></tr>');
+            return;
         }
 
-        // 📱 เพิ่ม responsive: true
-        $('#tableLoanHistory').DataTable({
-            responsive: true,
-            "pageLength": 10,
-            "lengthChange": true,
-            "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
-            "searching": false,
-            "ordering": false,
-            "language": {
-                "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
-                "paginate": { "next": ">", "previous": "<" },
-                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ"
+        rows.forEach(r => {
+            // 🌟 1. สร้าง Badge ประเภทงบ/แหล่งงบ
+            var badgeType = r.budgetType && r.budgetType !== '-' ? `<span class="badge bg-primary text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${r.budgetType}</span>` : '';
+            var badgeSource = r.budgetSource && r.budgetSource !== '-' ? `<span class="badge bg-secondary text-white border shadow-sm"><i class="fas fa-wallet me-1"></i>${r.budgetSource}</span>` : '';
+
+            // 🌟 2. จัดรูปแบบชื่อโครงการ กิจกรรมหลัก กิจกรรมย่อย
+            var projHTML = `<div class="fw-bold text-primary text-wrap mt-2" style="font-size: 0.95rem;">${r.project || r.proj || '-'}</div>`;
+            var actHTML = '';
+            if (r.activity || r.act) {
+                let formattedAct = String(r.activity || r.act).replace(/\n/g, '<br>');
+                actHTML = `<div class="text-secondary small fw-bold mt-1" style="padding-left: 0.5rem;"><i class="fas fa-level-up-alt fa-rotate-90 me-1 text-muted"></i> กิจกรรมหลัก : ${formattedAct}</div>`;
+            }
+            var subHTML = '';
+            if (r.subActivity || r.subAct || r.sub) {
+                let formattedSub = String(r.subActivity || r.subAct || r.sub).replace(/\n/g, '<br>');
+                subHTML = `<div class="small text-info mt-1" style="padding-left: 1.5rem; line-height: 1.6;"><i class="fas fa-level-up-alt fa-rotate-90 me-1"></i> กิจกรรมย่อย : <br><div style="padding-left: 1.2rem; margin-top: 2px;" class="text-muted">${formattedSub}</div></div>`;
+            }
+
+            // 🌟 3. ป้ายสถานะ (รองรับ "คืนเงินแล้ว" และ "คืนครบ")
+            var isReturned = (r.status === 'คืนเงินแล้ว' || r.status === 'คืนครบ');
+            var statusBadge = isReturned
+                ? `<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>${r.status}</span>`
+                : `<span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>${r.status || 'ยืม'}</span>`;
+
+            // 🌟 4. เตรียมปุ่มจัดการ (Action Buttons)
+            // ถ้าคืนเงินแล้ว จะปิดการใช้งานปุ่มคืนเงินและปุ่มแก้ไขเพื่อป้องกันข้อมูลซ้ำซ้อน
+            var btnReturn = isReturned
+                ? `<button class="btn btn-sm btn-light border text-muted px-2 py-1 shadow-sm" disabled title="คืนเงินเรียบร้อยแล้ว"><i class="fas fa-undo fs-6"></i></button>`
+                : `<button class="btn btn-sm btn-success px-2 py-1 shadow-sm" title="บันทึกคืนเงินยืม" onclick="returnLoanBackend(${r.rowId}, '${r.projectId}', ${r.amount})">
+                    <i class="fas fa-undo fs-6"></i>
+                   </button>`;
+
+            var btnEdit = isReturned
+                ? `<button class="btn btn-sm btn-light border text-muted px-2 py-1 shadow-sm" disabled><i class="fas fa-edit fs-6"></i></button>`
+                : `<button class="btn btn-sm btn-outline-warning px-2 py-1 shadow-sm" title="แก้ไขยอดเงิน" onclick="editLoanAmount('${r.projectId}', '${r.project}', ${r.amount})">
+                    <i class="fas fa-edit fs-6"></i>
+                   </button>`;
+
+            tbody.append(`
+            <tr>
+                <td class="text-center text-muted small fw-bold align-middle">${r.order || '-'}</td>
+                <td class="align-middle py-3">
+                    <div class="mb-1">${badgeType}${badgeSource}</div>
+                    ${projHTML}
+                    ${actHTML}
+                    ${subHTML}
+                </td>
+                <td class="text-center small align-middle">
+                    <div class="text-nowrap">${r.date || '-'}</div>
+                    <div class="mt-1">${statusBadge}</div>
+                </td>
+                <td class="text-end fw-bold text-dark align-middle">${Number(r.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td class="text-end text-success align-middle">${Number(r.paid || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td class="text-end text-danger fw-bold align-middle">${Number(r.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td class="align-middle">
+                    <div class="text-wrap small text-secondary">${r.desc || '-'}</div>
+                </td>
+                <td class="text-center align-middle">
+                   <div class="d-flex justify-content-center gap-2">
+                        ${btnReturn}
+                        ${btnEdit}
+                        <button class="btn btn-sm btn-outline-danger px-2 py-1 shadow-sm" title="ลบรายการ" onclick="deleteLoanBackend(${r.rowId}, '${r.projectId}', ${r.amount})">
+                            <i class="fas fa-trash-alt fs-6"></i>
+                        </button>
+                   </div>
+                </td>
+            </tr>`);
+        });
+
+        // 🎯 เรียกใช้ DataTables 
+        $(tableId).DataTable(getBaseDataTableConfig({
+            searching: false
+        }));
+    }
+
+    // ==========================================
+    // 📌 ฟังก์ชันกดปุ่มลบรายการเงินยืม (ยืนยันก่อนลบ + สั่งโหลด UI ใหม่)
+    // ==========================================
+    window.deleteLoanBackend = function (rowIdx, projectId, amount) {
+        Swal.fire({
+            title: 'ยืนยันการยกเลิกรายการเงินยืม?',
+            html: `ยอดเงินยืม <b>${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</b> บาท <br>จะถูกลบและคืนกลับเข้างบคงเหลือทันที!`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash-alt me-2"></i>ใช่, ลบเลย!',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'กำลังดึงยอดเงินคืน...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+                google.script.run
+                    .withSuccessHandler(function (res) {
+                        if (res.success || res.status === 'success') {
+                            Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', text: 'คืนยอดเงินเข้าโครงการเรียบร้อย', timer: 1500, showConfirmButton: false });
+                            refreshMasterData();
+                            loadLoanHistory();
+                            loadDashboardData();
+                        } else {
+                            Swal.fire('ผิดพลาด', res.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(function (err) {
+                        Swal.fire('ระบบขัดข้อง', err.message, 'error');
+                    })
+                    .deleteLoanBackend(rowIdx, projectId, amount);
+            }
+        });
+    }
+
+    // ==========================================
+    // 📌 ฟังก์ชันกดปุ่ม "คืนเงินยืม"
+    // ==========================================
+    window.returnLoanBackend = function (rowIdx, projectId, amount) {
+        Swal.fire({
+            title: 'ยืนยันการคืนเงินยืม?',
+            html: `เงินยืมจำนวน <b>${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</b> บาท <br>จะถูกบันทึกสถานะว่า "คืนเงินแล้ว" และยอดเงินจะกลับเข้าสู่โครงการ`,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#198754', // สีเขียว
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-undo me-2"></i>ยืนยันการคืนเงิน',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'กำลังทำรายการ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+                google.script.run
+                    .withSuccessHandler(function (res) {
+                        if (res.success || res.status === 'success') {
+                            Swal.fire({ icon: 'success', title: 'คืนเงินสำเร็จ!', text: 'อัปเดตยอดเรียบร้อย', timer: 1500, showConfirmButton: false });
+                            refreshMasterData();
+                            loadLoanHistory(); // โหลดตารางใหม่
+                            loadDashboardData();
+                        } else {
+                            Swal.fire('ผิดพลาด', res.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(function (err) {
+                        Swal.fire('ระบบขัดข้อง', err.message, 'error');
+                    })
+                    .returnLoanBackend(rowIdx, projectId, amount);
             }
         });
     }
@@ -1099,17 +1256,28 @@
     }
 
     // ==========================================
-    // 📌 4. ฟังก์ชันวาด DHTMLX Gantt Chart (Responsive Mobile-Ready)
+    // 📌 4. ฟังก์ชันวาด DHTMLX Gantt Chart (Group by โครงการ + ป้ายชื่อ + % ท้ายข้อความ)
     // ==========================================
     function renderTrackingGanttCharts(data) {
         if (typeof gantt === 'undefined') return;
 
         if (!$('#gantt-neon-style').length) {
             $('head').append(`<style id="gantt-neon-style">
-                .gantt_container, .gantt_container * { font-family: 'Prompt', sans-serif !important; }
+                .gantt_container, .gantt_container * { font-family: 'IBM Plex Sans Thai', 'Prompt', sans-serif !important; }
+                // .gantt_container, .gantt_container * { font-family: 'Noto Sans Thai', sans-serif !important; }
                 .gantt_grid_scale, .gantt_task_scale { background-color: #2c3e50 !important; color: #ffffff !important; }
                 .gantt_grid_head_cell, .gantt_scale_cell { color: #ffffff !important; font-weight: 500 !important; font-size: 0.85rem !important; }
-                .gantt_tree_content { white-space: normal !important; line-height: 1.4 !important; font-size: 0.85rem !important; padding: 5px 0; color: #333; }
+                .gantt_tree_content { 
+                  white-space: normal !important; 
+                  line-height: 1.4 !important; 
+                  font-size: 0.85rem !important; 
+                  padding: 5px 0; color: #333; 
+                  display: -webkit-box; 
+                  -webkit-line-clamp: 3; 
+                  -webkit-box-orient: vertical; 
+                  overflow: hidden; 
+                  text-overflow: ellipsis; 
+                  }
                 .gantt_task_line { border: none !important; border-radius: 12px !important; height: 24px !important; line-height: 24px !important; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
                 .gantt_task_progress { background-color: rgba(255,255,255,0.2) !important; border-radius: 12px 0 0 12px !important; }
                 .neon-badge { padding: 1px 8px; border-radius: 10px; font-weight: 600; font-size: 0.7rem; border: 1px solid; display: inline-block; min-width: 40px; text-align: center; }
@@ -1117,13 +1285,13 @@
                 .neon-blue { background: #e6f7ff; color: #1890ff; border-color: #91d5ff; box-shadow: 0 0 5px rgba(24, 144, 255, 0.3); }
                 .neon-green { background: #f6ffed; color: #52c41a; border-color: #b7eb8f; box-shadow: 0 0 5px rgba(82, 196, 26, 0.3); }
                 .today-marker { background-color: #00e676 !important; width: 2px !important; opacity: 0.8; }
-                .gantt_tooltip { font-family: 'Prompt', sans-serif !important; padding: 10px !important; line-height: 1.6 !important; border-radius: 8px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
+                .gantt_tooltip { font-family: 'IBM Plex Sans Thai', 'Prompt', sans-serif !important; padding: 10px !important; line-height: 1.6 !important; border-radius: 8px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
+                // .gantt_tooltip { font-family: 'Noto Sans Thai', sans-serif !important; padding: 10px !important; line-height: 1.6 !important; border-radius: 8px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
+                .gantt-resp-badge { background-color: #f8f9fa; color: #495057; border: 1px solid #ced4da; border-radius: 12px; padding: 2px 8px; font-size: 0.7rem; margin-left: 8px; font-weight: 500; display: inline-block; }
             </style>`);
         }
 
-        // 📱 เช็คขนาดหน้าจอ: ถ้าน้อยกว่า 768px ถือว่าเป็นมือถือ
         let isMobile = window.innerWidth < 768;
-
         let d = new Date();
         let currentYear = d.getFullYear();
         let budgetYear = (d.getMonth() >= 9) ? currentYear + 1 : currentYear;
@@ -1134,6 +1302,7 @@
 
         let tasks = { data: [], links: [] };
         let deptMap = {};
+        let projMap = {};
         let taskIdCounter = 1;
         let totalProjCount = 0; let totalDelayedCount = 0; let totalBudgetSum = 0;
 
@@ -1141,16 +1310,36 @@
             let range = getTimelineRange(r);
             if (range.start < 12) {
                 let deptName = r.dept || 'ไม่ระบุกลุ่มงาน';
-                let deptId;
+                let projName = r.proj || 'ไม่ระบุชื่อโครงการ';
+                let deptId, projId;
 
+                // 1. สร้าง Parent: ระดับ "กลุ่มงาน"
                 if (!deptMap[deptName]) {
                     deptId = 'dept_' + taskIdCounter++;
                     deptMap[deptName] = deptId;
-                    tasks.data.push({ id: deptId, text: deptName, type: gantt.config.types.project, open: true, color: "#1a237e" });
+                    tasks.data.push({ id: deptId, text: `<span class="fw-bold">${deptName}</span>`, type: gantt.config.types.project, open: true, color: "#1a237e" });
                 } else {
                     deptId = deptMap[deptName];
                 }
 
+                // 2. สร้าง Parent: ระดับ "โครงการ"
+                let projKey = deptName + '|' + projName;
+                if (!projMap[projKey]) {
+                    projId = 'proj_' + taskIdCounter++;
+                    projMap[projKey] = projId;
+                    tasks.data.push({
+                        id: projId,
+                        text: `<i class="fas fa-folder-open text-warning me-2"></i><span class="fw-bold text-dark">${projName}</span>`,
+                        type: gantt.config.types.project,
+                        open: true,
+                        parent: deptId,
+                        color: "#6c757d"
+                    });
+                } else {
+                    projId = projMap[projKey];
+                }
+
+                // 3. เตรียมข้อมูลระดับ "กิจกรรม" (Task ย่อย)
                 let alloc = Number(r.allocated || 0);
                 let spent = Number(r.spent || 0);
                 let prog = (alloc > 0) ? (spent / alloc) : 0;
@@ -1160,16 +1349,34 @@
                 if (prog >= 1 && alloc > 0) barColor = "#198754";
                 else if (spent <= 0 && currentMonthIdx >= range.start) { barColor = "#dc3545"; totalDelayedCount++; }
 
+                // 🌟 สร้าง Badge % สีสันตามความก้าวหน้า
+                let p = Math.round(prog * 100);
+                let neonClass = "neon-badge ms-2 ";
+                if (p === 100) neonClass += "neon-green";
+                else if (p <= 30) neonClass += "neon-red";
+                else neonClass += "neon-blue";
+                let progressBadge = `<span class="${neonClass}">${p}%</span>`;
+
                 totalProjCount++;
                 totalBudgetSum += alloc;
 
+                // 🌟 ประกอบร่างชื่อในตาราง (Tree): กิจกรรม + ผู้รับผิดชอบ + %
+                let actText = r.order ? `<span class="text-muted me-2">[${r.order}]</span> ` : '';
+                let cleanActName = r.act || 'กิจกรรม'; // เก็บชื่อเพียวๆ ไว้โชว์บนแถบ Gantt Bar
+
+                actText += cleanActName;
+                if (r.subAct) actText += ` <span class="text-muted small">(${r.subAct})</span>`;
+                if (r.resp) actText += ` <span class="gantt-resp-badge"><i class="fas fa-user-circle text-secondary me-1"></i>${r.resp}</span>`;
+                actText += progressBadge; // เอา % มาต่อท้ายสุด
+
                 tasks.data.push({
                     id: taskIdCounter++,
-                    text: r.act || r.proj || 'โครงการ',
+                    text: actText,
+                    act_name_only: cleanActName, // 👈 ส่งชื่อเพียวๆ เข้าไปเก็บใน Data
                     start_date: new Date((range.start < 3 ? budgetYear - 1 : budgetYear), (range.start + 9) % 12, 1),
                     end_date: new Date((range.end < 3 ? budgetYear - 1 : budgetYear), (range.end + 9) % 12 + 1, 0),
                     progress: prog,
-                    parent: deptId,
+                    parent: projId,
                     color: barColor,
                     budget_info: `จัดสรร: ${alloc.toLocaleString()} | เบิก: ${spent.toLocaleString()}`
                 });
@@ -1182,40 +1389,18 @@
 
         // --- GANTT CONFIG ---
         gantt.config.readonly = true;
-        gantt.config.row_height = 50;
+        gantt.config.row_height = 75; // ปรับความสูงของแถว
         gantt.config.scale_height = 65;
         gantt.config.start_date = fiscalStartDate;
         gantt.config.end_date = fiscalEndDate;
-
-        // 📱 ถพเป็นมือถือ: ย่อความกว้างฝั่งตารางซ้ายลงเหลือแค่ 150px
-        gantt.config.grid_width = isMobile ? 150 : 380;
+        gantt.config.grid_width = isMobile ? 150 : 550; // ขยายความกว้าง Grid นิดหน่อยเพื่อรองรับ %
 
         const thaiMonthsShort = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
-        // 📱 จัดการคอลัมน์: ถ้าเป็นมือถือ ให้ซ่อนคอลัมน์เวลาและ % ให้เหลือแค่ชื่อโครงการ
+        // 🌟 จัดการคอลัมน์: เหลือแค่คอลัมน์ชื่อรายการอย่างเดียว (ลบวันเริ่มออกเพื่อลดความซ้ำซ้อน)
         let ganttColumns = [
-            { name: "text", label: isMobile ? "โครงการ" : "รายการโครงการ/กิจกรรม", width: "*", tree: true }
+            { name: "text", label: isMobile ? "รายการ" : "กลุ่มงาน > โครงการ > กิจกรรม", width: "*", tree: true }
         ];
-
-        if (!isMobile) {
-            ganttColumns.push({
-                name: "start_date", label: "เริ่ม", align: "center", width: 65, template: function (obj) {
-                    if (obj.type === gantt.config.types.project) return "";
-                    return thaiMonthsShort[obj.start_date.getMonth()] + " " + (obj.start_date.getFullYear() + 543).toString().slice(-2);
-                }
-            });
-            ganttColumns.push({
-                name: "progress", label: "%", align: "center", width: 60, template: function (obj) {
-                    if (obj.type === gantt.config.types.project) return "";
-                    let p = Math.round(obj.progress * 100);
-                    let neonClass = "neon-badge ";
-                    if (p === 100) neonClass += "neon-green";
-                    else if (p <= 30) neonClass += "neon-red";
-                    else neonClass += "neon-blue";
-                    return `<span class="${neonClass}">${p}%</span>`;
-                }
-            });
-        }
 
         gantt.config.columns = ganttColumns;
 
@@ -1225,9 +1410,17 @@
         ];
 
         gantt.plugins({ tooltip: true, marker: true });
+
+        // Tooltip (เวลาเอาเมาส์ชี้)
         gantt.templates.tooltip_text = function (start, end, task) {
-            if (task.type === gantt.config.types.project) return `<b>${task.text}</b>`;
-            return `<div style="font-size:0.9rem;"><b>${task.text}</b><br/>${task.budget_info}</div>`;
+            if (task.type === gantt.config.types.project) return `<b>${task.text.replace(/<[^>]*>?/gm, '')}</b>`;
+            return `<div style="font-size:0.9rem;"><b>${task.act_name_only}</b><br/>${task.budget_info}</div>`;
+        };
+
+        // 🌟 บังคับให้ข้อความบนแถบสี (Gantt Bar) โชว์แค่ชื่อกิจกรรมสั้นๆ
+        gantt.templates.task_text = function (start, end, task) {
+            if (task.type === gantt.config.types.project) return ""; // ไม่โชว์ชื่อในระดับโปรเจกต์
+            return task.act_name_only || "";
         };
 
         gantt.init("gantt_here");
@@ -1356,11 +1549,20 @@
 
                 let pct = actAlloc > 0 ? (actSpent / actAlloc) * 100 : 0;
 
+                // 🌟 ดึงข้อมูล 4 คอลัมน์ใหม่มาแสดงในตาราง
+                let opBadge = act.opType ? `<span class="badge bg-light text-secondary border me-1 mt-1"><i class="fas fa-tasks me-1"></i>${act.opType}</span>` : '';
+                let expBadge = act.expType ? `<span class="badge bg-light text-secondary border mt-1"><i class="fas fa-file-invoice-dollar me-1"></i>${act.expType}</span>` : '';
+                let detailText = act.expDetail ? `<div class="small text-muted mt-1" style="font-size: 0.75rem;"><i class="fas fa-info-circle me-1"></i>${act.expDetail}</div>` : '';
+                let remarkText = act.projRemark ? `<div class="small text-danger mt-1" style="font-size: 0.75rem;"><i class="fas fa-exclamation-circle me-1"></i>${act.projRemark}</div>` : '';
+
                 html += `
                     <tr>
                         <td class="text-center text-muted small align-middle">${act.order || '-'}</td>
                         <td class="ps-4 align-middle">
-                            <div class="text-dark"><i class="fas fa-level-up-alt fa-rotate-90 me-2 text-muted"></i>${act.act || act.proj}</div>
+                            <div class="text-dark fw-bold"><i class="fas fa-level-up-alt fa-rotate-90 me-2 text-muted"></i>${act.act || act.proj}</div>
+                            <div>${opBadge}${expBadge}</div>
+                            ${detailText}
+                            ${remarkText}
                         </td>
                         <td class="text-end align-middle" style="font-size: 0.9rem;">
                             ${fmt(actAlloc)}
@@ -1444,11 +1646,14 @@
     function resetSearch() {
         $('#searchDeptSelect').val('').trigger('change');
         $('#searchType').val('');
-        $('#searchSource').val(''); // ล้างค่าแหล่งงบ
+        $('#searchSource').val('');
         $('#searchQuarter').val('');
         $('#searchMonth').val('');
 
-        updateSearchSourceDropdown(); // โหลดตัวเลือกแหล่งงบกลับมาให้ครบ
+        // ล้างค่าช่องคีย์เวิร์ดที่เพิ่มเข้ามาใหม่
+        $('#searchKeyword').val('');
+
+        updateSearchSourceDropdown();
         renderSearchTable([]);
     }
 
@@ -1469,9 +1674,12 @@
     function executeSearchLogic() {
         let sDept = $('#searchDeptSelect').val();
         let sType = $('#searchType').val();
-        let sSource = $('#searchSource').val(); // 🎯 รับค่าแหล่งงบประมาณ
+        let sSource = $('#searchSource').val();
         let sQuarter = $('#searchQuarter').val();
         let sMonth = $('#searchMonth').val();
+
+        // ดึงค่าจากช่องค้นหาคีย์เวิร์ด แปลงเป็นตัวเล็กเพื่อการเปรียบเทียบ
+        let sKeyword = $('#searchKeyword').val().trim().toLowerCase();
 
         let filtered = globalMasterPlanData.filter(r => {
             if (r.status !== 'ACTIVE') return false;
@@ -1483,7 +1691,6 @@
                 if (sType === 'NONMOPH' && !rType.includes('เงินนอก')) return false;
             }
 
-            // 🎯 กรองตามแหล่งงบประมาณที่เลือก
             if (sSource && r.source !== sSource) return false;
 
             if (sMonth !== "") {
@@ -1500,6 +1707,19 @@
                 if (sQuarter === 'Q4' && (r.timeline[9] == 1 || r.timeline[10] == 1 || r.timeline[11] == 1)) qMatch = true;
                 if (!qMatch) return false;
             }
+
+            // ระบบค้นหาเจาะลึก (Deep Search) ครอบคลุม โครงการ, กิจกรรมหลัก, กิจกรรมย่อย
+            if (sKeyword) {
+                let projStr = String(r.proj || '').toLowerCase();
+                let actStr = String(r.act || '').toLowerCase();
+                let subActStr = String(r.subAct || r.sub || '').toLowerCase();
+
+                // ถ้าคีย์เวิร์ดไม่ตรงกับฟิลด์ไหนเลย ให้คัดทิ้ง
+                if (!projStr.includes(sKeyword) && !actStr.includes(sKeyword) && !subActStr.includes(sKeyword)) {
+                    return false;
+                }
+            }
+
             return true;
         });
 
@@ -1507,97 +1727,137 @@
     }
 
     function renderSearchTable(data) {
-        let count = 0, sumApprove = 0, sumAlloc = 0;
+        // 🔥 นำตัวแปร count ออกจากการนับบรรทัดเริ่มต้น
+        let sumApprove = 0, sumAlloc = 0;
 
-        // 🔥 เคลียร์แคชและทำลาย DataTables ของเก่าให้สะอาดหมดจด
         if ($.fn.DataTable.isDataTable('#searchTable')) {
             $('#searchTable').DataTable().clear().destroy();
         }
 
         let tbody = $('#searchTableBody').empty();
+        let html = '';
 
-        data.forEach(r => {
-            count++;
-            sumApprove += (Number(r.approved) || 0);
-            sumAlloc += (Number(r.allocated) || 0);
+        if (!data || data.length === 0) {
+            html = '<tr><td colspan="8" class="text-center text-muted py-4">ไม่พบข้อมูล</td></tr>';
+            // เซ็ตยอดเป็น 0 กรณีไม่พบข้อมูล
+            $('#sum-count').text('0');
+            $('#sum-approved').text('0.00');
+            $('#sum-allocated').text('0.00');
+        } else {
+            let grouped = {};
+            data.forEach(r => {
+                // 🌟 นับยอดเงินรวมจากทุกกิจกรรมย่อย (อันนี้ยังต้องบวกทุกบรรทัด)
+                sumApprove += (Number(r.approved) || 0);
+                sumAlloc += (Number(r.allocated) || 0);
 
-            let range = getTimelineRange(r);
-            let timeStr = (range.start < 12) ? `${trackMonthNames[range.start]} - ${trackMonthNames[range.end]}` : '-';
-
-            // ==========================================
-            // 🎨 Phase 1: Logic สีของ Badge ประเภทงบและแหล่งงบ
-            // ==========================================
-            let typeStr = String(r.type || '').trim();
-            let sourceStr = String(r.source || '').trim();
-
-            // 1. ประเภทงบ (Type)
-            let typeBadgeHtml = '';
-            if (typeStr) {
-                let typeStyle = 'background-color: #6c757d; color: white;'; // ค่าเริ่มต้นสีเทา
-                if (typeStr.includes('สป.สธ')) {
-                    typeStyle = 'background-color: #1a237e; color: white;'; // สีน้ำเงินเข้ม
-                } else if (typeStr.includes('เงินนอก')) {
-                    typeStyle = 'background-color: #0d6efd; color: white;'; // สีน้ำเงินสด
+                // 🗂️ จัดกลุ่มข้อมูลตามชื่อโครงการ
+                let pName = String(r.proj || 'ไม่ระบุชื่อโครงการ').trim();
+                if (!grouped[pName]) {
+                    grouped[pName] = {
+                        type: String(r.type || '').trim(),
+                        source: String(r.source || '').trim(),
+                        dept: String(r.dept || '-').trim(),
+                        order: r.order || '-',
+                        items: []
+                    };
                 }
-                typeBadgeHtml = `<span class="badge fw-normal shadow-sm" style="${typeStyle}">${typeStr}</span>`;
-            }
+                grouped[pName].items.push(r);
+            });
 
-            // 2. แหล่งงบประมาณ (Source)
-            let sourceBadgeHtml = '';
-            if (sourceStr) {
-                let sourceStyle = 'background-color: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6;'; // ค่าเริ่มต้นสีเทาอ่อน
-                if (sourceStr.includes('เงินบำรุง สสจ.เลย')) {
-                    // ใช้สีฟ้า/น้ำเงินอ่อนๆ ให้แตกต่างจากประเภทงบนิดหน่อย จะได้ไม่กลืนกัน
-                    sourceStyle = 'background-color: #e6f2ff; color: #0d6efd; border: 1px solid #99caff;';
+            // 🎯 การแก้ไข: ให้นับจำนวนโครงการจาก "จำนวนกลุ่ม" ที่จัดได้สำเร็จ
+            let projectCount = Object.keys(grouped).length;
+
+            for (let pName in grouped) {
+                let g = grouped[pName];
+
+                let typeBadgeHtml = '';
+                if (g.type) {
+                    let typeStyle = 'background-color: #6c757d; color: white;';
+                    if (g.type.includes('สป.สธ')) typeStyle = 'background-color: #1a237e; color: white;';
+                    else if (g.type.includes('เงินนอก')) typeStyle = 'background-color: #0d6efd; color: white;';
+                    typeBadgeHtml = `<span class="badge fw-normal shadow-sm" style="${typeStyle}">${g.type}</span>`;
                 }
-                sourceBadgeHtml = `<span class="badge fw-normal" style="${sourceStyle}">${sourceStr}</span>`;
-            }
 
-            let badgeContainer = (typeBadgeHtml || sourceBadgeHtml) ? `<div class="mt-2 d-flex gap-2 flex-wrap">${typeBadgeHtml}${sourceBadgeHtml}</div>` : '';
+                let sourceBadgeHtml = '';
+                if (g.source) {
+                    let sourceStyle = 'background-color: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6;';
+                    if (g.source.includes('เงินบำรุง สสจ.เลย')) sourceStyle = 'background-color: #e6f2ff; color: #0d6efd; border: 1px solid #99caff;';
+                    sourceBadgeHtml = `<span class="badge fw-normal" style="${sourceStyle}">${g.source}</span>`;
+                }
+                let badgeContainer = (typeBadgeHtml || sourceBadgeHtml) ? `<div class="mb-1 d-flex gap-2 flex-wrap">${typeBadgeHtml}${sourceBadgeHtml}</div>` : '';
 
-            // ==========================================
-
-            tbody.append(`
-                <tr>
-                    <td class="text-center text-muted small align-middle">${r.order || '-'}</td>
-                    <td class="align-middle">${r.dept || '-'}</td>
+                html += `
+                <tr class="table-light">
+                    <td class="text-center fw-bold align-middle text-muted">${g.order}</td>
+                    <td class="align-middle fw-bold text-dark">${g.dept}</td>
                     <td class="align-middle">
-                        <div class="fw-bold text-dark text-wrap">${r.proj || '-'}</div>
-                        <div class="small text-muted text-wrap">${r.act || ''}</div>
-                        ${badgeContainer} </td>
-                    <td class="text-center align-middle"><span class="badge bg-info text-dark bg-opacity-25 border border-info">${timeStr}</span></td>
-                    <td class="text-end align-middle">${Number(r.approved || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td class="text-end text-success fw-bold align-middle">${Number(r.allocated || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td class="text-end text-danger align-middle">${Number(r.spent || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td class="text-end text-primary fw-bold align-middle">${Number(r.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        ${badgeContainer}
+                        <div class="text-primary fw-bold mt-1" style="font-size: 1.05rem;">โครงการ : ${pName}</div>
+                    </td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
                 </tr>
-            `);
-        });
+            `;
 
-        $('#sum-count').text(count.toLocaleString());
-        $('#sum-approved').text(sumApprove.toLocaleString(undefined, { minimumFractionDigits: 2 }));
-        $('#sum-allocated').text(sumAlloc.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+                g.items.forEach(act => {
+                    let range = typeof getTimelineRange === 'function' ? getTimelineRange(act) : { start: 12, end: 12 };
+                    let timeStr = (range.start < 12 && typeof trackMonthNames !== 'undefined') ? `<span class="badge bg-info text-dark bg-opacity-25 border border-info">${trackMonthNames[range.start]} - ${trackMonthNames[range.end]}</span>` : '-';
 
-        // 🎯 ตั้งค่า DataTables หน้าค้นหา AP (ชื่อ ID ตรงกับ HTML แล้ว!)
-        $('#searchTable').DataTable({ // 👈 แก้ชื่อ ID เป็น searchTable
+                    let mainAct = String(act.act || '').trim();
+                    let subAct = String(act.subAct || act.sub || '').trim();
+
+                    subAct = subAct.replace(/undefined/gi, '').replace(/null/gi, '').trim();
+                    mainAct = mainAct.replace(/undefined/gi, '').replace(/null/gi, '').trim();
+
+                    let detailHtml = `<div class="ms-3 text-dark"><i class="fas fa-level-up-alt fa-rotate-90 me-2 text-muted"></i>กิจกรรมหลัก : ${mainAct || '-'}</div>`;
+
+                    if (subAct.length > 0) {
+                        detailHtml += `<div class="text-muted small mt-1 ms-5"><i class="fas fa-level-up-alt fa-rotate-90 me-2"></i>กิจกรรมย่อย : ${subAct}</div>`;
+                    }
+
+                    html += `
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td class="align-middle">${detailHtml}</td>
+                        <td class="text-center align-middle">${timeStr}</td>
+                        <td class="text-end align-middle">${Number(act.approved || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td class="text-end text-success fw-bold align-middle">${Number(act.allocated || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td class="text-end text-danger align-middle">${Number(act.spent || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td class="text-end text-primary fw-bold align-middle">${Number(act.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                `;
+                });
+            }
+
+            tbody.html(html);
+
+            // 🎯 อัปเดตตัวเลขเข้า Summary Card ด้วยค่า projectCount ใหม่
+            $('#sum-count').text(projectCount.toLocaleString());
+            $('#sum-approved').text(sumApprove.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            $('#sum-allocated').text(sumAlloc.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+        }
+
+        $('#searchTable').DataTable({
             responsive: true,
             "pageLength": 10,
             "lengthChange": true,
             "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
-            "searching": true,
+            "searching": false, // ปิดกล่องค้นหาพื้นฐานของ DataTables
             "ordering": false,
             "info": true,
-            // 👇 คำสั่งบังคับจัด Layout: บน(เลือกหน้า, ค้นหา) กลาง(ตาราง) ล่าง(Info, เปลี่ยนหน้า)
-            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'>>" +
                 "<'row'<'col-sm-12'tr>>" +
                 "<'row mt-3 align-items-center'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7 d-flex justify-content-end'p>>",
             "language": {
                 "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
-                "search": "ค้นหาในตาราง:",
                 "paginate": { "next": "ถัดไป", "previous": "ก่อนหน้า" },
                 "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
                 "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
-                "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)"
+                "emptyTable": "ไม่พบข้อมูล"
             }
         });
     }
@@ -1673,55 +1933,145 @@
     }
 
     function renderYearlyTable(data) {
-        let count = 0, sumApprove = 0, sumAlloc = 0;
+        // เตรียมตัวแปรสำหรับคำนวณ Summary Bar
+        let sumAlloc = 0, sumSpent = 0;
 
-        // 🔥 เคลียร์แคชและทำลาย DataTables ของเก่าให้สะอาดหมดจด
+        // 🔥 เคลียร์ DataTables เดิมทิ้ง
         if ($.fn.DataTable.isDataTable('#yearlyTable')) {
             $('#yearlyTable').DataTable().clear().destroy();
         }
 
         let tbody = $('#yearlyTableBody').empty();
+        let html = '';
 
-        data.forEach(r => {
-            count++;
-            sumApprove += (Number(r.approved) || 0);
-            sumAlloc += (Number(r.allocated) || 0);
+        // 💥 กรองบรรทัดว่างทิ้ง (เตะผีหลอก)
+        let validData = (data || []).filter(r => r.id && String(r.id).trim() !== '' && r.proj && String(r.proj).trim() !== '');
 
-            let range = getTimelineRange(r);
-            let timeStr = (range.start < 12) ? `${trackMonthNames[range.start]} - ${trackMonthNames[range.end]}` : '-';
+        if (validData.length === 0) {
+            html = '<tr><td colspan="8" class="text-center text-muted py-4">ไม่พบข้อมูล</td></tr>';
 
-            let budgetBadge = String(r.type).includes('เงินนอก') ? 'bg-primary' : 'bg-success';
+            // 🎯 กรณีไม่มีข้อมูล ให้เซ็ต Summary Bar เป็น 0
+            $('#yearly-count').text('0');
+            $('#yearly-allocated').text('0.00');
+            $('#yearly-spent').text('0.00');
+        } else {
+            // 🗂️ จัดกลุ่มข้อมูลตาม "ชื่อโครงการ"
+            let grouped = {};
+            validData.forEach(r => {
+                // บวกสะสมยอดเงินจากทุกๆ กิจกรรม (เฉพาะที่ใช้)
+                sumAlloc += (Number(r.allocated) || 0);
+                sumSpent += (Number(r.spent) || 0);
 
-            tbody.append(`
-                <tr>
-                    <td class="text-center text-muted small">${r.order || '-'}</td>
-                    <td>${r.dept || '-'}</td>
-                    <td>
-                        <div class="fw-bold text-dark text-wrap">${r.proj || '-'}</div>
-                        <div class="small text-muted text-wrap">${r.act || ''}</div>
-                    </td>
-                    <td>
-                        <span class="badge ${budgetBadge} bg-opacity-10 text-dark border border-opacity-25 mb-1">${r.type || '-'}</span>
-                        <div class="small text-muted">${r.source || ''}</div>
-                    </td>
-                    <td class="text-center"><span class="badge bg-light text-dark border">${timeStr}</span></td>
-                    <td class="text-end text-success fw-bold">${Number(r.allocated || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td class="text-end text-danger">${Number(r.spent || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td class="text-end text-primary fw-bold pe-3">${Number(r.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                </tr>
-            `);
-        });
+                let pName = String(r.proj).trim();
+                if (!grouped[pName]) {
+                    grouped[pName] = {
+                        type: String(r.type || '').trim(),
+                        source: String(r.source || '').trim(),
+                        dept: String(r.dept || '-').trim(),
+                        order: r.order || '-',
+                        items: []
+                    };
+                }
+                grouped[pName].items.push(r);
+            });
 
-        $('#yp-count').text(count.toLocaleString());
-        $('#yp-approved').text(sumApprove.toLocaleString(undefined, { minimumFractionDigits: 2 }));
-        $('#yp-allocated').text(sumAlloc.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            // 🎯 นับจำนวนโครงการจาก "หัวหน้ากลุ่ม" ที่จัดเสร็จแล้ว
+            let projectCount = Object.keys(grouped).length;
 
-        // 📱 วาดตารางใหม่พร้อม Responsive Mode
+            // 🎨 วนลูปวาดตารางแบบลดหลั่นชั้น (8 คอลัมน์) 
+            for (let pName in grouped) {
+                let g = grouped[pName];
+
+                // --- Logic วาด Badge สี ---
+                let typeBadgeHtml = '';
+                if (g.type) {
+                    let typeStyle = 'background-color: #6c757d; color: white;';
+                    if (g.type.includes('สป.สธ')) typeStyle = 'background-color: #1a237e; color: white;';
+                    else if (g.type.includes('เงินนอก')) typeStyle = 'background-color: #0d6efd; color: white;';
+                    typeBadgeHtml = `<span class="badge fw-normal shadow-sm" style="${typeStyle}">${g.type}</span>`;
+                }
+
+                let sourceBadgeHtml = '';
+                if (g.source) {
+                    let sourceStyle = 'background-color: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6;';
+                    if (g.source.includes('เงินบำรุง สสจ.เลย')) sourceStyle = 'background-color: #e6f2ff; color: #0d6efd; border: 1px solid #99caff;';
+                    sourceBadgeHtml = `<span class="badge fw-normal" style="${sourceStyle}">${g.source}</span>`;
+                }
+                let badgeContainer = (typeBadgeHtml || sourceBadgeHtml) ? `<div class="mb-1 d-flex gap-2 flex-wrap">${typeBadgeHtml}${sourceBadgeHtml}</div>` : '';
+
+                // 🌟 1. วาดแถวหัวหน้ากลุ่ม (ชื่อโครงการ)
+                html += `
+                    <tr class="table-light">
+                        <td class="text-center fw-bold align-middle text-muted">${g.order}</td>
+                        <td class="align-middle fw-bold text-dark">${g.dept}</td>
+                        <td class="align-middle py-2">
+                            ${badgeContainer}
+                            <div class="text-primary fw-bold mt-1" style="font-size: 1.05rem;">โครงการ : ${pName}</div>
+                        </td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                `;
+
+                // 🌟 2. วาดแถวลูกน้อง (กิจกรรมหลัก/ย่อย)
+                g.items.forEach(act => {
+                    let range = typeof getTimelineRange === 'function' ? getTimelineRange(act) : { start: 12, end: 12 };
+                    let timeStr = (range.start < 12 && typeof trackMonthNames !== 'undefined') ? `<span class="badge bg-info text-dark bg-opacity-25 border border-info">${trackMonthNames[range.start]} - ${trackMonthNames[range.end]}</span>` : '-';
+
+                    let mainAct = String(act.act || '').replace(/undefined/gi, '').replace(/null/gi, '').trim();
+                    let subAct = String(act.subAct || act.sub || '').replace(/undefined/gi, '').replace(/null/gi, '').trim();
+
+                    let detailHtml = `<div class="ms-3 text-dark"><i class="fas fa-level-up-alt fa-rotate-90 me-2 text-muted"></i>กิจกรรมหลัก : ${mainAct || '-'}</div>`;
+
+                    if (subAct.length > 0) {
+                        detailHtml += `<div class="text-muted small mt-1 ms-5"><i class="fas fa-level-up-alt fa-rotate-90 me-2"></i>กิจกรรมย่อย : ${subAct}</div>`;
+                    }
+
+                    html += `
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            <td class="align-middle">${detailHtml}</td>
+                            <td class="align-middle text-muted small">${g.type}<br>${g.source}</td>
+                            <td class="text-center align-middle">${timeStr}</td>
+                            <td class="text-end fw-bold text-success align-middle">${Number(act.allocated || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td class="text-end text-danger align-middle">${Number(act.spent || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td class="text-end fw-bold text-primary align-middle pe-3">${Number(act.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            tbody.html(html);
+
+            // 🎯 อัปเดตตัวเลขเข้าแถบ Summary Bar ตัวใหม่!
+            $('#yearly-count').text(projectCount.toLocaleString());
+            $('#yearly-allocated').text(sumAlloc.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            $('#yearly-spent').text(sumSpent.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+        }
+
+        // 🎯 5. ตั้งค่า DataTables
         $('#yearlyTable').DataTable({
             responsive: true,
-            pageLength: 15,
-            lengthChange: false,
-            language: { search: "ค้นหาในตาราง:", paginate: { next: ">", previous: "<" }, emptyTable: "ไม่พบข้อมูลที่ตรงกับเงื่อนไข หรือ กรุณากดค้นหา" }
+            "pageLength": 10,
+            "lengthChange": true,
+            "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
+            "searching": false,
+            "ordering": false,
+            "info": true,
+            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'>>" +
+                "<'row'<'col-sm-12'tr>>" +
+                "<'row mt-3 align-items-center'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7 d-flex justify-content-end'p>>",
+            "language": {
+                "lengthMenu": "แสดง _MENU_ รายการ",
+                "paginate": { "next": "ถัดไป", "previous": "ก่อนหน้า" },
+                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                "infoEmpty": "แสดง 0 รายการ",
+                "emptyTable": "ไม่พบข้อมูล"
+            }
         });
     }
 
@@ -1732,6 +2082,8 @@
     // 1. ประกาศตัวแปร Global สำหรับกราฟ (ห้ามลบ)
     var myChartSource = null;
     var myChartTopDept = null;
+    var myChartExpType = null;
+    var myChartOpType = null;
 
     /** 🌟 ฟังก์ชันหลักสำหรับเริ่มโหลดข้อมูล */
     function loadSummary() {
@@ -1771,6 +2123,8 @@
             var byDeptFiltered = {};
             var byDeptAll = {}, byDeptMoph = {}, byDeptNon = {};
             var bySource = {};
+            var byExpType = {}; // 🌟 เพิ่มตัวแปรคำนวณประเภทค่าใช้จ่าย
+            var byOpType = {};  // 🌟 เพิ่มตัวแปรคำนวณประเภทการดำเนินงาน
 
             var customSourceTable = [
                 { name: 'สป.สธ.', allocated: 0, spent: 0 },
@@ -1795,7 +2149,6 @@
                 var cType = typeVal.replace(/\s+/g, '');
                 var cSource = sourceVal.replace(/\s+/g, '');
 
-                // 1. ลงตะกร้า 6 ใบ
                 if (cType === 'สป.สธ.') {
                     customSourceTable[0].allocated += alloc; customSourceTable[0].spent += spent;
                 } else if (cType === 'เงินนอกสป.') {
@@ -1807,7 +2160,6 @@
                     } else { customSourceTable[1].allocated += alloc; customSourceTable[1].spent += spent; }
                 }
 
-                // 2. จัดกลุ่ม MOPH / NON-MOPH สำหรับตาราง 3 แท็บ
                 var isNonMoph = (typeVal.includes('เงินนอก') || typeVal.includes('เงินบำรุง') || typeVal.includes('บริจาค') || typeVal.toUpperCase().includes('NON'));
 
                 if (!byDeptAll[deptVal]) byDeptAll[deptVal] = { allocated: 0, spent: 0 };
@@ -1821,7 +2173,6 @@
                     byDeptNon[deptVal].allocated += alloc; byDeptNon[deptVal].spent += spent;
                 }
 
-                // 3. กรองตาม Filter (สำหรับ Grand Total และกราฟแท่ง)
                 var passType = !typeFilter || cType === String(typeFilter).replace(/\s+/g, '');
                 var passSource = !sourceFilter || cSource === String(sourceFilter).replace(/\s+/g, '');
                 var passDept = !deptFilter || deptVal === deptFilter;
@@ -1830,15 +2181,22 @@
                     grandTotal.allocated += alloc; grandTotal.spent += spent; grandTotal.balance += bal; grandTotal.count++;
                     if (!byDeptFiltered[deptVal]) byDeptFiltered[deptVal] = { allocated: 0, spent: 0 };
                     byDeptFiltered[deptVal].allocated += alloc; byDeptFiltered[deptVal].spent += spent;
+
+                    // 🌟 คำนวณกราฟพายใหม่ 2 ตัว (เฉพาะข้อมูลที่ผ่าน Filter)
+                    var expVal = String(row.expType || "ไม่ระบุ").trim();
+                    if (!byExpType[expVal]) byExpType[expVal] = { allocated: 0 };
+                    byExpType[expVal].allocated += alloc;
+
+                    var opVal = String(row.opType || "ไม่ระบุ").trim();
+                    if (!byOpType[opVal]) byOpType[opVal] = { allocated: 0 };
+                    byOpType[opVal].allocated += alloc;
                 }
 
-                // 4. กราฟพาย
                 var group = isNonMoph ? "เงินนอกงบประมาณ" : "งบประมาณ (สป.สธ.)";
                 if (!bySource[group]) bySource[group] = { allocated: 0 };
                 bySource[group].allocated += alloc;
             });
 
-            // 🌟 ฟังก์ชันตัวช่วยสำหรับสร้างลิสต์และเรียงลำดับตาม % (100% -> 0%)
             var toList = (obj) => Object.keys(obj).map(k => {
                 let a = obj[k].allocated;
                 let s = obj[k].spent || 0;
@@ -1846,7 +2204,6 @@
                 return { name: k, allocated: a, spent: s, pct: p };
             }).sort((a, b) => (b.pct - a.pct) || (b.allocated - a.allocated));
 
-            // 🎯 ส่งข้อมูลไปวาดผลลัพธ์
             renderSummaryUI({
                 grandTotal: grandTotal,
                 customSourceTable: customSourceTable,
@@ -1854,7 +2211,9 @@
                 byDeptAll: toList(byDeptAll),
                 byDeptMoph: toList(byDeptMoph),
                 byDeptNon: toList(byDeptNon),
-                bySource: toList(bySource)
+                bySource: toList(bySource),
+                byExpType: toList(byExpType), // 🌟 ส่งข้อมูลไปวาดกราฟ
+                byOpType: toList(byOpType)    // 🌟 ส่งข้อมูลไปวาดกราฟ
             });
 
             if (typeof Swal !== 'undefined') Swal.close();
@@ -1952,6 +2311,32 @@
                 options: { responsive: true, maintainAspectRatio: false }
             });
         }
+
+        // 6. วาดกราฟประเภทค่าใช้จ่าย (ใหม่)
+        if (document.getElementById('chartExpType') && typeof Chart !== 'undefined') {
+            if (myChartExpType) myChartExpType.destroy();
+            myChartExpType = new Chart(document.getElementById('chartExpType'), {
+                type: 'pie',
+                data: {
+                    labels: data.byExpType.map(d => d.name),
+                    datasets: [{ data: data.byExpType.map(d => d.allocated), backgroundColor: ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56', '#4bc0c0', '#9966ff'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // 7. วาดกราฟประเภทการดำเนินงาน (ใหม่)
+        if (document.getElementById('chartOpType') && typeof Chart !== 'undefined') {
+            if (myChartOpType) myChartOpType.destroy();
+            myChartOpType = new Chart(document.getElementById('chartOpType'), {
+                type: 'doughnut',
+                data: {
+                    labels: data.byOpType.map(d => d.name),
+                    datasets: [{ data: data.byOpType.map(d => d.allocated), backgroundColor: ['#ff9f40', '#ffcd56', '#4bc0c0', '#36a2eb', '#9966ff', '#ff6384'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
     }
 
     // ==========================================
@@ -1975,13 +2360,13 @@
     // 📌 ฟังก์ชันสั่งล้างหนี้ (ผูกกับปุ่ม "บันทึก" ใน Modal คืนเงิน)
     // ==========================================
     function submitRepayment() {
-        // ⚠️ รบกวนเจ้านายเช็ค ID ของช่อง Input เหล่านี้ ให้ตรงกับที่ตั้งไว้ในหน้า index.html ด้วยนะครับ
         var projectId = $('#repayProjectId').val();
         var currentLoan = Number($('#repayCurrentLoan').val()) || 0;
 
         var actualSpent = Number($('#repayActualSpent').val()) || 0; // ยอดเบิกจ่ายจริงตามบิล
         var returnedAmt = Number($('#repayReturnedAmount').val()) || 0; // ยอดเงินทอนคืนโครงการ
         var totalClear = actualSpent + returnedAmt;
+        var repayDate = $('#rpDate').val(); // 🌟 ดึงวันที่จากหน้าจอไปบันทึกลงชีต
 
         if (totalClear === 0) {
             Swal.fire('เตือน', 'กรุณาระบุยอดเบิกจ่ายจริง หรือ ยอดเงินทอน', 'warning');
@@ -1995,16 +2380,16 @@
         var payload = {
             projectId: projectId,
             actualSpent: actualSpent,
-            returnedAmount: returnedAmt
+            returnedAmount: returnedAmt,
+            repayDate: repayDate // 🌟 ส่งวันที่ไปให้หลังบ้าน
         };
 
         $('#btnSaveRepayment').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>กำลังบันทึก...');
 
         google.script.run
             .withSuccessHandler(function (res) {
-                $('#btnSaveRepayment').prop('disabled', false).html('<i class="fas fa-save me-2"></i>บันทึกคืนเงิน');
+                $('#btnSaveRepayment').prop('disabled', false).html('<i class="fas fa-save me-2"></i>ยืนยันการคืนเงิน');
                 if (res.success || res.status === 'success') {
-                    // ปิด Modal (เปลี่ยนไอดี Modal ให้ตรงของเจ้านาย)
                     $('#repaymentModal').modal('hide');
                     Swal.fire({ icon: 'success', title: 'เคลียร์เงินยืมสำเร็จ!', timer: 1500, showConfirmButton: false });
 
@@ -2016,32 +2401,54 @@
                 }
             })
             .withFailureHandler(function (err) {
-                $('#btnSaveRepayment').prop('disabled', false).html('บันทึกคืนเงิน');
+                $('#btnSaveRepayment').prop('disabled', false).html('<i class="fas fa-save me-2"></i>ยืนยันการคืนเงิน');
                 Swal.fire('ขัดข้อง', err.message, 'error');
             })
             .saveRepayment(payload);
     }
 
     // ==========================================
-    // 📌 ฟังก์ชันปุ่มลบรายการยืม (ลบปุ๊บ คืนเงินเข้าโปรเจกต์ปั๊บ)
+    // 📌 ฟังก์ชันแก้ไขยอดเงินยืม (Edit Loan Amount)
     // ==========================================
-    window.deleteLoanTx = function (rowIdx, projectId, amount) {
+    window.editLoanAmount = function (projectId, projectName, currentAmount) {
         Swal.fire({
-            title: 'ยกเลิกรายการยืมเงิน?',
-            html: `เงินยืมจำนวน <b>${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</b> บาท <br>จะถูกคืนกลับเข้า "ยอดคงเหลือ" ของโครงการ!`,
-            icon: 'warning',
+            title: 'แก้ไขยอดเงินยืม',
+            html: `โครงการ: <b class="text-primary">${projectName}</b><br>ยอดเงินยืมปัจจุบัน: <b>${Number(currentAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</b> บาท`,
+            input: 'number',
+            inputLabel: 'ระบุยอดเงินยืมที่ถูกต้อง (บาท)',
+            inputValue: currentAmount, // ใส่ยอดเดิมไว้ให้แก้ไขง่ายๆ
+            inputAttributes: {
+                min: 0,
+                step: 0.01
+            },
             showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonText: 'ปิด',
-            confirmButtonText: '<i class="fas fa-trash-alt me-2"></i>ใช่, ยกเลิกและดึงเงินคืน!'
+            confirmButtonColor: '#ffc107',
+            confirmButtonText: '<i class="fas fa-save me-1 text-dark"></i> บันทึกการแก้ไข',
+            cancelButtonText: 'ยกเลิก',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'กรุณาระบุตัวเลขยอดเงินยืมครับ!'
+                }
+                if (Number(value) < 0) {
+                    return 'ยอดเงินยืมไม่สามารถติดลบได้ครับ!'
+                }
+            }
         }).then((result) => {
             if (result.isConfirmed) {
-                Swal.fire({ title: 'กำลังดึงเงินคืน...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                var newAmount = Number(result.value);
+
+                // ถ้าตัวเลขเท่าเดิม ไม่ต้องส่งไปหลังบ้านให้เสียเวลา
+                if (newAmount === Number(currentAmount)) {
+                    return;
+                }
+
+                Swal.fire({ title: 'กำลังอัปเดตข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
                 google.script.run
                     .withSuccessHandler(function (res) {
-                        if (res.success || res.status === 'success') {
-                            Swal.fire({ icon: 'success', title: 'ดึงเงินคืนสำเร็จ!', timer: 1500, showConfirmButton: false });
+                        if (res.status === 'success') {
+                            Swal.fire({ icon: 'success', title: 'แก้ไขสำเร็จ!', text: res.message, timer: 1500, showConfirmButton: false });
+                            // โหลดข้อมูลตารางและกราฟใหม่ให้เป็นปัจจุบัน
                             refreshMasterData();
                             if (typeof loadLoanHistory === 'function') loadLoanHistory();
                             loadDashboardData();
@@ -2050,9 +2457,9 @@
                         }
                     })
                     .withFailureHandler(function (err) {
-                        Swal.fire('ขัดข้อง', err.message, 'error');
+                        Swal.fire('ระบบขัดข้อง', err.message, 'error');
                     })
-                    .deleteLoanBackend(rowIdx, projectId, amount);
+                    .updateLoanAmount(projectId, newAmount); // วิ่งไปหาฟังก์ชันใหม่ที่เราสร้างไว้ใน Step 1
             }
         });
     }
@@ -2133,13 +2540,18 @@
         renderAllocHistoryTable(filteredRows);
     }
 
+    // ==========================================
+    // 📌 ฟังก์ชันวาดตาราง ประวัติจัดสรรงบประมาณ 
+    // ==========================================
     function renderAllocHistoryTable(rows) {
         if ($.fn.DataTable.isDataTable('#tableAllocHistory')) {
             $('#tableAllocHistory').DataTable().destroy();
         }
         var tbody = $('#allocHistoryBody').empty();
+
+        // 🌟 เปลี่ยน colspan เป็น 9 เพื่อให้ครอบคลุมคอลัมน์ใหม่
         if (!rows || rows.length === 0) {
-            tbody.append('<tr><td colspan="7" class="text-center py-5 text-muted">ไม่พบประวัติการจัดสรรงบประมาณ</td></tr>');
+            tbody.append('<tr><td colspan="9" class="text-center py-5 text-muted">ไม่พบประวัติการจัดสรรงบประมาณ</td></tr>');
             return;
         }
 
@@ -2148,35 +2560,57 @@
             var allocNew = Number(r.currentAlloc).toLocaleString(undefined, { minimumFractionDigits: 2 });
             var allocTotal = Number(r.accumulatedAlloc).toLocaleString(undefined, { minimumFractionDigits: 2 });
 
+            var badgeType = r.type ? `<span class="badge bg-primary text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${r.type}</span>` : '';
+            var badgeSource = r.source ? `<span class="badge bg-secondary text-white border shadow-sm"><i class="fas fa-wallet me-1"></i>${r.source}</span>` : '';
+
+            var projHTML = `<div class="fw-bold text-primary text-wrap mt-2" style="font-size: 0.95rem;">${r.project || r.proj || '-'}</div>`;
+
+            var actText = r.activity || r.act || '';
+            var actHTML = '';
+            if (actText) {
+                let formattedAct = String(actText).replace(/\n/g, '<br>');
+                actHTML = `<div class="text-secondary small fw-bold mt-1" style="padding-left: 0.5rem;"><i class="fas fa-level-up-alt fa-rotate-90 me-1 text-muted"></i> กิจกรรมหลัก : ${formattedAct}</div>`;
+            }
+
+            var subText = r.subActivity || r.subAct || r.sub || '';
+            var subHTML = '';
+            if (subText) {
+                let formattedSub = String(subText).replace(/\n/g, '<br>');
+                subHTML = `<div class="small text-info mt-1" style="padding-left: 1.5rem; line-height: 1.6;"><i class="fas fa-level-up-alt fa-rotate-90 me-1"></i> กิจกรรมย่อย : <br><div style="padding-left: 1.2rem; margin-top: 2px;" class="text-muted">${formattedSub}</div></div>`;
+            }
+
+            // 🌟 เพิ่ม ${r.order} ไว้คอลัมน์แรกสุด
             tbody.append(`
             <tr>
-                <td class="text-nowrap small">${r.date}</td>
-                <td class="small">${r.dept || '-'}</td>
-                <td>
-                    <div class="fw-bold text-dark text-wrap" style="font-size: 0.95rem;">${r.project || '-'}</div>
-                    <div class="small text-muted text-wrap mt-1"><i class="fas fa-angle-right me-1"></i>${r.activity || ''}</div>
+                <td class="text-center text-muted small fw-bold align-middle">${r.order || '-'}</td>
+                <td class="text-nowrap small align-middle">${r.date || '-'}</td>
+                <td class="small align-middle">${r.dept || '-'}</td>
+                <td class="align-middle py-3">
+                    <div class="mb-1">${badgeType}${badgeSource}</div>
+                    ${projHTML}
+                    ${actHTML}
+                    ${subHTML}
                 </td>
-                <td class="text-nowrap small">${r.letterNo || '-'}</td>
-                <td class="text-end text-muted small">${allocOld}</td>
-                <td class="text-end text-success fw-bold">${allocNew}</td>
-                <td class="text-end text-primary fw-bold pe-4">${allocTotal}</td>
+                <td class="text-nowrap small align-middle">${r.letterNo || '-'}</td>
+                <td class="text-end text-muted small align-middle">${allocOld}</td>
+                <td class="text-end text-success fw-bold align-middle">${allocNew}</td>
+                <td class="text-end text-primary fw-bold pe-4 align-middle">${allocTotal}</td>
+                <td class="text-center align-middle">
+                    <div class="d-flex justify-content-center gap-2">
+                        <button class="btn btn-sm btn-outline-warning px-2 py-1 shadow-sm" title="แก้ไขรายการ" onclick="editAllocation('${r.rowId}', '${r.id}', ${r.currentAlloc})">
+                            <i class="fas fa-edit fs-6"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger px-2 py-1 shadow-sm" title="ลบรายการ" onclick="deleteAllocation('${r.rowId}', '${r.id}', ${r.currentAlloc})">
+                            <i class="fas fa-trash-alt fs-6"></i>
+                        </button>
+                    </div>
+                </td>
             </tr>`);
         });
 
-        // 🎯 วาดตารางพร้อมเปิดเมนูเลือกจำนวนรายการ
-        $('#tableAllocHistory').DataTable({
-            responsive: true,
-            "pageLength": 10,
-            "lengthChange": true,
-            "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
-            "searching": false,
-            "ordering": false,
-            "language": {
-                "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
-                "paginate": { "next": ">", "previous": "<" },
-                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ"
-            }
-        });
+        $('#tableAllocHistory').DataTable(getBaseDataTableConfig({
+            searching: false
+        }));
     }
 
     // --- Modal Functions (เพิ่ม/จัดสรรงบ) ---
@@ -2321,6 +2755,265 @@
                 Swal.fire('Error', res.message, 'error');
             }
         }).saveAllocation(payload);
+    }
+
+    // ==========================================
+    // 📌 ฟังก์ชันแก้ไขยอดเบิกจ่าย (SweetAlert Popup)
+    // ==========================================
+    window.editTransaction = function (txId, projectId, currentAmount) {
+        Swal.fire({
+            title: 'แก้ไขยอดเบิกจ่าย',
+            text: 'กรุณาระบุยอดเบิกจ่ายที่ถูกต้อง',
+            input: 'number',
+            inputValue: currentAmount,
+            inputAttributes: { min: 0, step: 0.01 },
+            showCancelButton: true,
+            confirmButtonColor: '#ffc107',
+            confirmButtonText: '<i class="fas fa-save me-1 text-dark"></i> บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            inputValidator: (value) => {
+                if (!value) return 'กรุณาระบุยอดเงินครับ!';
+                if (Number(value) < 0) return 'ยอดเงินไม่สามารถติดลบได้ครับ!';
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                var newAmount = Number(result.value);
+                if (newAmount === Number(currentAmount)) return;
+
+                Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+                // ส่งข้อมูลไปหลังบ้าน
+                google.script.run
+                    .withSuccessHandler(function (res) {
+                        if (res.status === 'success') {
+                            Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'แก้ไขยอดเบิกจ่ายเรียบร้อย', timer: 1500, showConfirmButton: false });
+                            refreshMasterData(); // โหลดข้อมูลใหม่
+                            loadTxHistory();     // รีเฟรชตารางประวัติ
+                            loadDashboardData();
+                        } else {
+                            Swal.fire('ผิดพลาด', res.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(function (err) {
+                        Swal.fire('ระบบขัดข้อง', err.message, 'error');
+                    })
+                    .updateTransaction(txId, projectId, newAmount, currentAmount); // เรียกฟังก์ชันหลังบ้าน
+            }
+        });
+    }
+
+    // ==========================================
+    // 📌 ฟังก์ชันแก้ไข ยอดจัดสรรงบประมาณ
+    // ==========================================
+    window.editAllocation = function (rowId, projectId, currentAmount) {
+        Swal.fire({
+            title: 'แก้ไขยอดจัดสรรงบประมาณ',
+            input: 'number',
+            inputValue: currentAmount,
+            inputAttributes: { min: 0, step: 0.01 },
+            showCancelButton: true,
+            confirmButtonColor: '#ffc107',
+            confirmButtonText: '<i class="fas fa-save me-1 text-dark"></i> บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            inputValidator: (value) => {
+                if (!value) return 'กรุณาระบุยอดเงินครับ!';
+                if (Number(value) < 0) return 'ยอดเงินติดลบไม่ได้ครับ!';
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                var newAmount = Number(result.value);
+                if (newAmount === Number(currentAmount)) return;
+
+                Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+                google.script.run
+                    .withSuccessHandler(function (res) {
+                        if (res.status === 'success') {
+                            Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'แก้ไขยอดจัดสรรเรียบร้อย', timer: 1500, showConfirmButton: false });
+                            refreshMasterData(); // โหลดข้อมูลใหม่
+                            loadDashboardData();
+                        } else { Swal.fire('ผิดพลาด', res.message, 'error'); }
+                    })
+                    .withFailureHandler(function (err) { Swal.fire('ระบบขัดข้อง', err.message, 'error'); })
+                    .updateAllocationRecord(rowId, projectId, newAmount, currentAmount);
+            }
+        });
+    }
+
+    // ==========================================
+    // 📌 ฟังก์ชันลบ ประวัติจัดสรรงบประมาณ
+    // ==========================================
+    window.deleteAllocation = function (rowId, projectId, amount) {
+        Swal.fire({
+            title: 'ยืนยันการลบ?',
+            text: `คุณต้องการลบรายการจัดสรรงบยอด ${Number(amount).toLocaleString()} บาท ใช่หรือไม่? (การกระทำนี้ย้อนกลับไม่ได้)`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash-alt me-1"></i> ยืนยันลบข้อมูล',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'กำลังลบข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+                google.script.run
+                    .withSuccessHandler(function (res) {
+                        if (res.status === 'success') {
+                            Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false });
+                            refreshMasterData();
+                            loadDashboardData();
+                        } else { Swal.fire('ผิดพลาด', res.message, 'error'); }
+                    })
+                    .withFailureHandler(function (err) { Swal.fire('ระบบขัดข้อง', err.message, 'error'); })
+                    .deleteAllocationRecord(rowId, projectId, amount);
+            }
+        });
+    }
+
+    // ==========================================
+    // 📌 ฟังก์ชันปลดล็อกตัวกรองแบบลดหลั่น (Cascading Dropdown) 
+    // สำหรับหน้าประวัติเบิกจ่าย (searchTx) และ ประวัติเงินยืม (searchLoan)
+    // ==========================================
+    function onCascadingChange(type, level) {
+        // type จะมีค่าเป็น 'searchTx' หรือ 'searchLoan'
+        let prefix = '#' + type;
+
+        let orderSel = $(prefix + 'Order');
+        let projSel = $(prefix + 'Proj');
+        let actSel = $(prefix + 'Act');
+        let subSel = $(prefix + 'Sub');
+
+        let orderVal = orderSel.val();
+
+        // 🟢 1. เมื่อเปลี่ยน "ลำดับโครงการ" -> ปลดล็อก "ชื่อโครงการ"
+        if (level === 'order') {
+            projSel.empty().append('<option value="">-- เลือกโครงการ --</option>');
+            actSel.empty().append('<option value="">-- เลือกกิจกรรม --</option>').val(null).trigger('change').prop('disabled', true);
+            if (subSel.length) subSel.empty().append('<option value="">-- เลือกกิจกรรมย่อย --</option>').val(null).trigger('change').prop('disabled', true);
+
+            if (!orderVal) { projSel.val(null).trigger('change').prop('disabled', true); return; }
+
+            let rows = CACHED_OPTIONS.filter(r => String(r.order) === String(orderVal));
+            let projects = [...new Set(rows.map(r => r.proj))].sort();
+            projects.forEach(p => projSel.append(new Option(p, p)));
+            projSel.prop('disabled', false); // ปลดล็อก!
+        }
+        // 🟢 2. เมื่อเปลี่ยน "ชื่อโครงการ" -> ปลดล็อก "กิจกรรมหลัก"
+        else if (level === 'proj') {
+            let projVal = projSel.val();
+            actSel.empty().append('<option value="">-- เลือกกิจกรรม --</option>');
+            if (subSel.length) subSel.empty().append('<option value="">-- เลือกกิจกรรมย่อย --</option>').val(null).trigger('change').prop('disabled', true);
+
+            if (!projVal) { actSel.val(null).trigger('change').prop('disabled', true); return; }
+
+            let rows = CACHED_OPTIONS.filter(r => String(r.order) === String(orderVal) && r.proj === projVal);
+            let acts = [...new Set(rows.map(r => r.act))].sort();
+            acts.forEach(a => actSel.append(new Option(a, a)));
+            actSel.prop('disabled', false); // ปลดล็อก!
+        }
+        // 🟢 3. เมื่อเปลี่ยน "กิจกรรมหลัก" -> ปลดล็อก "กิจกรรมย่อย"
+        else if (level === 'act') {
+            let projVal = projSel.val();
+            let actVal = actSel.val();
+
+            if (subSel.length) {
+                subSel.empty().append('<option value="">-- เลือกกิจกรรมย่อย --</option>');
+                if (!actVal) { subSel.val(null).trigger('change').prop('disabled', true); return; }
+
+                let rows = CACHED_OPTIONS.filter(r => String(r.order) === String(orderVal) && r.proj === projVal && r.act === actVal);
+                // 🌟 ใช้ตัวแปร subAct ให้ตรงกับหลังบ้าน
+                let subs = [...new Set(rows.map(r => r.subAct).filter(s => s && String(s).trim() !== ""))].sort();
+
+                if (subs.length > 0) {
+                    subs.forEach(s => subSel.append(new Option(s, s)));
+                    subSel.prop('disabled', false); // ปลดล็อก!
+                } else {
+                    subSel.prop('disabled', true);
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // 📌 ฟังก์ชันสร้างตารางสืบค้นแบบจัดกลุ่ม (Grouped Layout)
+    // ==========================================
+    function buildGroupedSearchTableRows(list) {
+        if (!list || list.length === 0) {
+            return '<tr><td colspan="15" class="text-center text-muted py-4">ไม่พบข้อมูล</td></tr>';
+        }
+
+        // 1. จัดกลุ่มข้อมูลโดยใช้ "ชื่อโครงการ" เป็นกุญแจหลัก
+        var grouped = {};
+        list.forEach(function (item) {
+            var pName = item.project || 'ไม่ระบุชื่อโครงการ';
+            if (!grouped[pName]) {
+                grouped[pName] = {
+                    type: item.type || item.budgetType || '',
+                    source: item.budgetSource || item.source || '',
+                    dept: item.dept || '',
+                    items: []
+                };
+            }
+            grouped[pName].items.push(item);
+        });
+
+        var html = '';
+        var count = 1;
+        var fmt = function (val) { return Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+        // 2. วนลูปวาด HTML ตามกลุ่ม
+        for (var pName in grouped) {
+            var g = grouped[pName];
+
+            // วาดป้าย Badge
+            var badgeType = g.type ? '<span class="badge bg-primary me-1">' + g.type + '</span>' : '';
+            var badgeSource = g.source ? '<span class="badge bg-secondary me-1">' + g.source + '</span>' : '';
+
+            // 🌟 วาดแถวหัวหน้ากลุ่ม (ชื่อโครงการ)
+            html += '<tr class="table-light">';
+            html += '  <td class="text-center fw-bold align-middle text-muted">' + (count++) + '</td>';
+            html += '  <td colspan="10">'; // หมายเหตุ: colspan คลุมทั้งตาราง เจ้านายสามารถปรับตัวเลข 10 ให้ตรงกับจำนวนคอลัมน์จริงได้ครับ
+            html += '    <div class="mb-1">' + badgeType + ' ' + badgeSource + '</div>';
+            html += '    <div class="text-primary fw-bold" style="font-size: 1.05rem;">' + pName + '</div>';
+            html += '  </td>';
+            html += '</tr>';
+
+            // 🌟 วาดแถวลูกน้อง (กิจกรรมหลัก และ กิจกรรมย่อย)
+            g.items.forEach(function (act) {
+                var mainAct = act.activity || act.act || '-';
+                var subAct = act.subActivity || act.subAct || '';
+                var subHtml = '';
+
+                // ตรวจจับและแยกข้อมูล กรณีหลังบ้านรวมกิจกรรมหลักและย่อยมาในตัวแปรเดียว (มีวงเล็บ)
+                if (mainAct.indexOf('(') > -1 && subAct === '') {
+                    var parts = mainAct.split('(');
+                    mainAct = parts[0].trim();
+                    subAct = '(' + parts[1];
+                }
+
+                if (subAct && subAct !== '') {
+                    subHtml = '<div class="text-muted small mt-1 ms-4"><i class="fas fa-level-up-alt fa-rotate-90 me-2"></i>' + subAct + '</div>';
+                }
+
+                html += '<tr>';
+                html += '  <td></td>'; // เว้นว่างคอลัมน์ลำดับ
+                html += '  <td>';
+                html += '    <div class="ms-3 text-dark"><i class="fas fa-level-up-alt fa-rotate-90 me-2 text-muted"></i>' + mainAct + '</div>';
+                html += '    ' + subHtml;
+                html += '  </td>';
+
+                // หมายเหตุ: บรรทัด <td> ด้านล่างนี้ จัดเรียงไว้ตามมาตรฐาน (กลุ่มงาน, จัดสรร, เบิกจ่าย, คงเหลือ) 
+                // เจ้านายต้องปรับจำนวน <td> ให้ตรงกับ <thead> หน้าเว็บจริงครับ
+                html += '  <td class="text-center align-middle">' + (act.dept || g.dept) + '</td>';
+                html += '  <td class="text-end align-middle fw-bold">' + fmt(act.allocated) + '</td>';
+                html += '  <td class="text-end align-middle text-success fw-bold">' + fmt(act.spent) + '</td>';
+                html += '  <td class="text-end align-middle text-primary fw-bold">' + fmt(act.balance) + '</td>';
+                html += '</tr>';
+            });
+        }
+
+        return html;
     }
 
 </script>

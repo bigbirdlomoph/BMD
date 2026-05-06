@@ -39,95 +39,179 @@
         }).getAdminMasterPlan();
     }
 
-    // 2️⃣ วาดตารางข้อมูล (DataTable)
     function renderMasterPlanTable(data) {
-        if (dtMasterPlan) { dtMasterPlan.destroy(); }
+        // 🔥 1. เคลียร์ DataTables เดิมทิ้ง
+        if ($.fn.DataTable.isDataTable('#tableMasterPlan')) {
+            $('#tableMasterPlan').DataTable().clear().destroy();
+        }
 
-        let tbody = $('#masterPlanTableBody');
-        tbody.empty();
+        let tbody = $('#masterPlanTableBody').empty();
+        let html = '';
 
-        data.forEach(function (row) {
-            let badgeType = '';
-            if (row.type === 'เงินนอก สป.') badgeType = `<span class="badge bg-primary text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${row.type}</span>`;
-            else if (row.type === 'สป.สธ.') badgeType = `<span class="badge bg-success text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${row.type}</span>`;
-            else if (row.type) badgeType = `<span class="badge bg-secondary text-white me-1 shadow-sm"><i class="fas fa-tag me-1"></i>${row.type}</span>`;
+        // 💥 2. กรองบรรทัดว่างทิ้ง
+        let validData = (data || []).filter(r => r.id && String(r.id).trim() !== '' && r.proj && String(r.proj).trim() !== '');
 
-            let badgeSource = '';
-            if (row.source === 'ไม่ใช้งบประมาณ') badgeSource = `<span class="badge bg-danger text-white me-1 shadow-sm"><i class="fas fa-ban me-1"></i>${row.source}</span>`;
-            else if (row.source === 'เงินบำรุง สสจ.เลย') badgeSource = `<span class="badge bg-primary text-white me-1 shadow-sm"><i class="fas fa-wallet me-1"></i>${row.source}</span>`;
-            else if (row.source) badgeSource = `<span class="badge bg-light text-dark border me-1 shadow-sm"><i class="fas fa-wallet me-1 text-secondary"></i>${row.source}</span>`;
+        if (validData.length === 0) {
+            html = '<tr><td colspan="9" class="text-center text-muted py-4">ไม่พบข้อมูล</td></tr>';
+        } else {
+            // 🗂️ 3. จัดกลุ่มข้อมูลตาม "ชื่อโครงการ"
+            let grouped = {};
+            validData.forEach(r => {
+                let pName = String(r.proj).trim();
+                if (!grouped[pName]) {
+                    grouped[pName] = {
+                        type: String(r.type || '').trim(),
+                        source: String(r.source || '').trim(),
+                        dept: String(r.dept || '-').trim(),
+                        order: r.order || '-',
+                        items: []
+                    };
+                }
+                grouped[pName].items.push(r);
+            });
 
-            let actHTML = row.act ? `<div class="text-secondary small fw-light text-wrap mt-1"><i class="fas fa-caret-right me-1 text-muted"></i>${row.act}</div>` : '';
-            let subHTML = row.sub ? `<div class="text-secondary small fw-light text-wrap mt-1"><i class="fas fa-angle-double-right me-1 ms-3 text-muted"></i>${row.sub}</div>` : '';
+            // 🎨 4. วนลูปวาดตารางแบบลดหลั่นชั้น (เยื้องขั้นบันได)
+            for (let pName in grouped) {
+                let g = grouped[pName];
 
-            let s = String(row.status || '').trim().toUpperCase();
-            let statusBadge = '';
-            if (s === 'ACTIVE') statusBadge = '<span class="badge bg-success">ACTIVE</span>';
-            else if (s === 'INACTIVE') statusBadge = '<span class="badge bg-secondary">INACTIVE</span>';
-            else if (s === 'REFUNDED') statusBadge = '<span class="badge bg-danger">REFUNDED</span>';
-            else statusBadge = `<span class="badge bg-dark">${s || 'N/A'}</span>`;
+                // --- Logic วาด Badge สี ---
+                let typeBadgeHtml = '';
+                if (g.type) {
+                    let typeStyle = 'background-color: #6c757d; color: white;';
+                    if (g.type.includes('สป.สธ')) typeStyle = 'background-color: #1a237e; color: white;';
+                    else if (g.type.includes('เงินนอก')) typeStyle = 'background-color: #0d6efd; color: white;';
+                    typeBadgeHtml = `<span class="badge fw-normal shadow-sm" style="${typeStyle}">${g.type}</span>`;
+                }
 
-            let safeId = String(row.id).replace(/'/g, "\\'");
+                let sourceBadgeHtml = '';
+                if (g.source) {
+                    let sourceStyle = 'background-color: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6;';
+                    if (g.source.includes('เงินบำรุง สสจ.เลย')) sourceStyle = 'background-color: #e6f2ff; color: #0d6efd; border: 1px solid #99caff;';
+                    sourceBadgeHtml = `<span class="badge fw-normal" style="${sourceStyle}">${g.source}</span>`;
+                }
+                let badgeContainer = (typeBadgeHtml || sourceBadgeHtml) ? `<div class="mb-1 d-flex gap-2 flex-wrap">${typeBadgeHtml}${sourceBadgeHtml}</div>` : '';
 
-            let tr = `
-            <tr>
-                <td class="text-center align-middle">
-                    <input class="form-check-input row-checkbox" type="checkbox" value="${row.id}" onchange="checkBulkActionStatus()">
-                </td>
-                <td class="ps-2 align-middle">
-                    <div class="fw-bold text-dark fs-6">${row.order || '-'}</div>
-                    <div class="small text-muted">${row.dept || '-'}</div>
-                </td>
-                <td class="align-middle py-3">
-                    <div class="mb-1">${badgeType}${badgeSource}</div>
-                    <div class="fw-bold text-primary text-wrap mb-1" style="font-size: 0.95rem;">${row.proj || '-'}</div>
-                    ${actHTML}
-                    ${subHTML}
-                </td>
-                <td class="text-end text-dark align-middle">${Number(row.allocated || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                <td class="text-end text-secondary align-middle">${Number(row.spent || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                <td class="text-end text-secondary align-middle">${Number(row.loan || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                <td class="text-end text-primary fw-bold fs-6 align-middle bg-primary bg-opacity-10">${Number(row.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                <td class="text-center align-middle">${statusBadge}</td>
-                <td class="text-center align-middle">
-                    <button class="btn btn-sm btn-outline-primary rounded-pill shadow-sm" onclick="editMasterPlan('${safeId}')"><i class="fas fa-edit"></i></button>
-                </td>
-            </tr>
-        `;
-            tbody.append(tr);
-        });
+                // 🌟 1. วาดแถวหัวหน้ากลุ่ม (ชื่อโครงการ) - ชิดซ้ายสุด
+                html += `
+                <tr class="table-light">
+                    <td></td> <td class="align-middle fw-bold text-muted text-center border-end"> 
+                        <div class="h6 mb-0 text-dark">${g.order}</div>
+                        <div class="small">${g.dept}</div>
+                    </td>
+                    <td class="align-middle border-end py-2"> 
+                        ${badgeContainer}
+                        <div class="text-primary fw-bold mt-1" style="font-size: 1.05rem;">ชื่อโครงการ : ${pName}</div>
+                    </td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
+            `;
 
-        dtMasterPlan = $('#tableMasterPlan').DataTable({
+                // 🌟 2. วาดแถวลูกน้อง (กิจกรรมหลัก/ย่อย)
+                g.items.forEach(act => {
+                    let mainAct = String(act.act || '').replace(/undefined/gi, '').replace(/null/gi, '').trim();
+                    let subAct = String(act.subAct || act.sub || '').replace(/undefined/gi, '').replace(/null/gi, '').trim();
+
+                    // 🎨 ปรับการเยื้อง (Indentation) ตรงนี้ครับ!
+                    // กิจกรรมหลัก: เยื้องเข้ามา 1 ระดับ (ms-3)
+                    let detailHtml = `<div class="text-dark ms-3"><i class="fas fa-level-up-alt fa-rotate-90 me-2 text-muted"></i>กิจกรรมหลัก : ${mainAct || '-'}</div>`;
+
+                    // กิจกรรมย่อย: เยื้องเข้ามาอีก 2 ระดับ (ms-5 ps-3)
+                    if (subAct.length > 0) {
+                        detailHtml += `<div class="text-muted small mt-1 ms-5 ps-3"><i class="fas fa-level-up-alt fa-rotate-90 me-2 text-danger"></i>กิจกรรมย่อย : ${subAct}</div>`;
+                    }
+
+                    let statusHtml = '';
+                    if (act.status === 'ACTIVE') statusHtml = '<span class="badge bg-success bg-opacity-10 text-success border border-success"><i class="fas fa-check-circle me-1"></i> ACTIVE</span>';
+                    else if (act.status === 'INACTIVE') statusHtml = '<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary"><i class="fas fa-ban me-1"></i> INACTIVE</span>';
+                    else if (act.status === 'REFUNDED') statusHtml = '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger"><i class="fas fa-undo me-1"></i> REFUNDED</span>';
+
+                    let btnHtml = `
+                    <div class="d-flex justify-content-center gap-1">
+                        <button class="btn btn-sm btn-outline-primary shadow-sm" onclick="editMasterPlan('${act.id}')" title="แก้ไข"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-outline-danger shadow-sm" onclick="deleteMasterPlan('${act.id}')" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+
+                    html += `
+                    <tr>
+                        <td class="text-center align-middle"><input class="form-check-input mp-checkbox" type="checkbox" value="${act.id}"></td>
+                        <td class="border-end"></td> 
+                        <td class="align-middle border-end">${detailHtml}</td> <td class="text-end fw-bold text-success align-middle">${Number(act.allocated || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td class="text-end text-danger align-middle">${Number(act.spent || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td class="text-end text-warning align-middle">${Number(act.loan || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td class="text-end fw-bold text-primary align-middle">${Number(act.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td class="text-center align-middle">${statusHtml}</td>
+                        <td class="text-center align-middle">${btnHtml}</td>
+                    </tr>
+                `;
+                });
+            }
+        }
+
+        tbody.html(html);
+
+        // 🎯 5. ตั้งค่า DataTables
+        $('#tableMasterPlan').DataTable({
             responsive: true,
             "pageLength": 10,
             "lengthChange": true,
             "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
             "searching": true,
             "ordering": false,
+            "info": true,
             "language": {
-                "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
-                "search": "ค้นหา:",
-                "paginate": { "next": ">", "previous": "<" },
-                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ"
+                "lengthMenu": "แสดง _MENU_ รายการ",
+                "search": "ค้นหาในตาราง:",
+                "paginate": { "next": "ถัดไป", "previous": "ก่อนหน้า" },
+                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                "infoEmpty": "แสดง 0 รายการ",
+                "infoFiltered": "(กรองจาก _MAX_ รายการ)"
             }
         });
     }
 
     // 3️⃣ อัปเดต Summary Cards
     function updateMasterPlanSummary(data) {
-        let sumMoph = 0; let sumNonMoph = 0; let sumLoeiFund = 0;
+        let sumMoph = 0;
+        let sumNonMoph = 0;
+        let sumLoeiFund = 0;
+
         data.forEach(row => {
+            // 1. ตรวจสอบสถานะ: ต้องเป็น ACTIVE เท่านั้น
+            let currentStatus = String(row.status || '').trim().toUpperCase();
+            if (currentStatus !== 'ACTIVE') return;
+
             let bal = Number(row.balance) || 0;
-            if (row.type === 'MOPH' || row.type === 'สป.สธ.' || row.source === 'สป.สธ.') sumMoph += bal;
-            else {
+            let typeVal = String(row.type || '').trim();
+            let sourceVal = String(row.source || '').trim();
+
+            // ลบช่องว่างเพื่อป้องกันการพิมพ์ผิด หรือเว้นวรรคไม่เท่ากัน (Human Error)
+            let cType = typeVal.replace(/\s+/g, '');
+            let cSource = sourceVal.replace(/\s+/g, '');
+
+            // 2. เงื่อนไข: ประเภทงบ = สป.สธ.
+            if (cType === 'สป.สธ.') {
+                sumMoph += bal;
+            }
+            // 3. เงื่อนไข: ประเภทงบ = เงินนอก สป.
+            else if (cType === 'เงินนอกสป.') {
                 sumNonMoph += bal;
-                if (row.source === 'เงินบำรุง สสจ.เลย') sumLoeiFund += bal;
+
+                // 4. เงื่อนไขย่อย: แหล่งงบประมาณ = เงินบำรุง สสจ.เลย
+                if (cSource === 'เงินบำรุงสสจ.เลย') {
+                    sumLoeiFund += bal;
+                }
             }
         });
+
+        // 5. เงื่อนไขรวมคงเหลือทั้งระบบ: (สป.สธ. คงเหลือ) + (เงินนอก สป. รวมทั้งหมด)
+        let totalBalance = sumMoph + sumNonMoph;
+
+        // อัปเดตตัวเลขลงใน UI
         $('#sum-moph-bal').text(sumMoph.toLocaleString('en-US', { minimumFractionDigits: 2 }));
         $('#sum-nonmoph-bal').text(sumNonMoph.toLocaleString('en-US', { minimumFractionDigits: 2 }));
         $('#sum-loeifund-bal').text(sumLoeiFund.toLocaleString('en-US', { minimumFractionDigits: 2 }));
-        $('#sum-total-bal').text((sumMoph + sumNonMoph).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+        $('#sum-total-bal').text(totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 }));
     }
 
     // 4️⃣ ระบบกรองข้อมูล (Filter)
@@ -200,7 +284,10 @@
             let selectedOrder = $('#filter-order').val(); let selectedProj = $('#filter-proj').val(); let selectedAct = $(this).val();
             if (selectedAct) {
                 let filteredSub = data.filter(r => String(r.order) === String(selectedOrder) && r.proj === selectedProj && r.act === selectedAct);
-                $('#filter-sub').empty().html(makeOptions(getUnique(filteredSub, 'sub'))).prop('disabled', false).select2({ theme: 'bootstrap-5' });
+
+                // 🌟 จุดที่แก้ไขครับ: เปลี่ยน 'sub' เป็น 'subAct' ให้ตรงกับหลังบ้าน
+                $('#filter-sub').empty().html(makeOptions(getUnique(filteredSub, 'subAct'))).prop('disabled', false).select2({ theme: 'bootstrap-5' });
+
             } else disableAndReset('#filter-sub');
         });
     }
@@ -247,11 +334,20 @@
     }
 
     function openAddPlanModal() {
-        $('#formMasterPlan')[0].reset(); $('#p_id').val('');
-        $('#p_budget_code, #p_act_code, #p_bal').val('');
+        $('#formMasterPlan').removeClass('was-validated'); // ล้างกรอบสีแดงแจ้งเตือน
+        $('#formMasterPlan')[0].reset();
+        $('#p_id').val('');
+
+        // ล้างช่องข้อมูลงบประมาณและข้อมูลใหม่
+        $('#p_budget_code, #p_act_code, #p_bal, #p_approve, #p_alloc').val('');
+        $('#p_opType, #p_expType, #p_expDetail, #p_projRemark').val('');
+
         $('.select2-modal').val(null).trigger('change');
         $('.month-chk').prop('checked', false);
-        $('#p_year').val(getThaiFiscalYear()); $('#p_status').val('ACTIVE');
+
+        $('#p_year').val(getThaiFiscalYear());
+        $('#p_status').val('ACTIVE');
+
         $('#planModalTitle').html('<i class="fas fa-plus-circle me-2"></i>เพิ่มโครงการใหม่');
         $('#modalMasterPlan').modal('show');
     }
@@ -260,32 +356,42 @@
         let row = globalMasterPlanData.find(r => String(r.id) === String(id));
         if (!row) return;
 
+        $('#formMasterPlan').removeClass('was-validated'); // ล้างกรอบสีแดงแจ้งเตือนตอนเปิดแก้ไข
         $('#planModalTitle').html('<i class="fas fa-edit me-2"></i>แก้ไขข้อมูลโครงการ');
+
+        // หมวด 1: ข้อมูลหลัก
         $('#p_id').val(row.id);
         $('#p_year').val(row.year || getThaiFiscalYear());
         $('#p_order').val(row.order);
-        $('#p_source').val(row.source);
+        if (row.cat) $('#p_cat').val(row.cat).trigger('change');
+        if (row.dept) $('#p_dept').val(row.dept).trigger('change');
+        if (row.plan) $('#p_plan').val(row.plan).trigger('change');
+
+        // หมวด 2: กิจกรรม
         $('#p_proj').val(row.proj);
         $('#p_act').val(row.act);
         $('#p_sub').val(row.sub);
-        $('#p_approve').val(row.approve || '');
+        $('#p_opType').val(row.opType || '');
+        $('#p_projRemark').val(row.projRemark || '');
 
-        $('#p_alloc').val(row.allocated || '');
+        // หมวด 3: งบประมาณ
+        if (row.type) $('#p_type').val(row.type).trigger('change');
+        $('#p_source').val(row.source);
         $('#p_budget_code').val(row.budgetCode || '');
         $('#p_act_code').val(row.actCode || '');
+        $('#p_expType').val(row.expType || '');
+        $('#p_expDetail').val(row.expDetail || '');
+
+        $('#p_approve').val(row.approve || '');
+        $('#p_alloc').val(row.allocated || '');
         $('#p_bal').val(Number(row.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }));
 
-        if (row.cat) $('#p_cat').val(row.cat).trigger('change');
-        if (row.dept) $('#p_dept').val(row.dept).trigger('change');
-        if (row.type) $('#p_type').val(row.type).trigger('change');
-        if (row.plan) $('#p_plan').val(row.plan).trigger('change');
-
-        // 🌟 อัปเดตให้อ่านค่าจาก row.timeline แบบแม่นยำ
+        // หมวด 4: ระยะเวลาและสถานะ
         $('.month-chk').prop('checked', false);
         if (row.timeline && Array.isArray(row.timeline)) {
             const thaiMonths = ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'];
             row.timeline.forEach((val, index) => {
-                if (Number(val) === 1) { // บังคับแปลงเป็นตัวเลขเพื่อความชัวร์
+                if (Number(val) === 1) {
                     $(`.month-chk[value="${thaiMonths[index]}"]`).prop('checked', true);
                 }
             });
@@ -294,29 +400,58 @@
         let s = String(row.status || '').trim().toUpperCase();
         if (['ACTIVE', 'INACTIVE', 'REFUNDED'].includes(s)) $('#p_status').val(s); else $('#p_status').val('ACTIVE');
         $('#p_remark').val(row.remark || '');
+
         $('#modalMasterPlan').modal('show');
     }
 
     function submitMasterPlan(e) {
         e.preventDefault();
+
+        // 🛑 เช็คความถูกต้องของฟอร์ม (Validation)
+        var form = document.getElementById('formMasterPlan');
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลในช่องที่มีเครื่องหมายดอกจัน (*) สีแดงให้ครบถ้วนครับ', 'warning');
+            return;
+        }
+
         let selectedMonths = [];
         $('.month-chk:checked').each(function () { selectedMonths.push($(this).val()); });
 
+        // แพ็กของเตรียมส่งไปหลังบ้าน
         let payload = {
-            id: $('#p_id').val(), year: $('#p_year').val(), cat: $('#p_cat').val(), order: $('#p_order').val(),
-            dept: $('#p_dept').val(), type: $('#p_type').val(), source: $('#p_source').val(),
-            budgetCode: $('#p_budget_code').val(), actCode: $('#p_act_code').val(),
-            plan: $('#p_plan').val(), proj: $('#p_proj').val(), act: $('#p_act').val(), sub: $('#p_sub').val(),
+            id: $('#p_id').val(),
+            year: $('#p_year').val(),
+            cat: $('#p_cat').val(),
+            order: $('#p_order').val(),
+            dept: $('#p_dept').val(),
+            plan: $('#p_plan').val(),
+
+            proj: $('#p_proj').val(),
+            act: $('#p_act').val(),
+            sub: $('#p_sub').val(),
+            opType: $('#p_opType').val(),
+            projRemark: $('#p_projRemark').val(),
+
+            type: $('#p_type').val(),
+            source: $('#p_source').val(),
+            budgetCode: $('#p_budget_code').val(),
+            actCode: $('#p_act_code').val(),
+            expType: $('#p_expType').val(),
+            expDetail: $('#p_expDetail').val(),
+
             approve: $('#p_approve').val(),
             allocated: $('#p_alloc').val(),
-            months: selectedMonths.join(', '), status: $('#p_status').val(), remark: $('#p_remark').val()
+
+            months: selectedMonths.join(', '),
+            status: $('#p_status').val(),
+            remark: $('#p_remark').val()
         };
 
         Swal.fire({ title: 'กำลังบันทึก...', text: 'กรุณารอสักครู่', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             google.script.run.withSuccessHandler(function (res) {
-                // 🛑 ดักจับ Error จากหลังบ้าน ป้องกันหมุนค้าง
                 if (res && res.status === 'error') {
                     Swal.fire('ผิดพลาดจากระบบหลังบ้าน', res.message, 'error');
                     return;

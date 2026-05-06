@@ -109,34 +109,33 @@
             .verifyEmailOnly(email);
     }
 
-    function performLogout() {
+    // ==========================================
+    // 📌 ฟังก์ชันออกจากระบบ (Logout) แบบสมบูรณ์
+    // ==========================================
+    window.performLogout = function () {
+        // 1. ล้างข้อมูลผู้ใช้ออกจาก LocalStorage (เบราว์เซอร์)
+        localStorage.removeItem('ap_monitoring_user');
+
+        // 2. รีเซ็ตตัวแปรระบบกลับเป็นสถานะ "ผู้เยี่ยมชม"
+        currentUser = { role: 'PUBLIC', email: '', fullName: 'ผู้เยี่ยมชม', status: 'GUEST' };
+
+        // 3. หยุดตัวนับเวลา Idle
+        clearInterval(idleInterval);
+
+        // 4. 🌟 จุดแก้บั๊ก: ถอดเฉพาะ Event ที่มี .idle ต่อท้ายเท่านั้น ระบบอื่นจะได้ไม่พัง
+        $(document).off('mousemove.idle keydown.idle click.idle scroll.idle');
+
+        // 5. สั่งอัปเดตหน้าจอ (ซ่อนปุ่มต่างๆ) และเด้งกลับไปหน้าแรก (Summary)
+        updateUIBasedOnRole(currentUser);
+        switchPage('summary', document.getElementById('nav-summary'));
+
+        // 6. แสดงหน้าต่างแจ้งเตือนว่าออกจากระบบแล้ว
         Swal.fire({
-            title: 'ออกจากระบบ',
-            text: "คุณต้องการปิดเซสชันและออกจากระบบใช่หรือไม่?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'ออกจากระบบ'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                if (currentUser && currentUser.email) {
-                    google.script.run.logAuthAction(currentUser.email, currentUser.fullName, 'LOGOUT', 'ออกจากระบบโดยผู้ใช้');
-                }
-
-                clearInterval(idleInterval);
-                $(document).off('mousemove keydown click scroll');
-                localStorage.removeItem('ap_monitoring_user');
-
-                currentUser = { role: 'PUBLIC', email: '', fullName: 'ผู้เยี่ยมชม', status: 'GUEST' };
-                updateUIBasedOnRole(currentUser);
-                switchPage('dashboard');
-
-                Swal.fire({
-                    toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,
-                    icon: 'info', title: 'ออกจากระบบเรียบร้อย'
-                });
-            }
+            icon: 'success',
+            title: 'ออกจากระบบสำเร็จ',
+            text: 'ไว้กลับมาลุยงานกันใหม่นะครับ!',
+            showConfirmButton: false,
+            timer: 1500
         });
     }
 
@@ -174,24 +173,43 @@
     // IDLE TIMEOUT SYSTEM
     // ==========================================
     function startIdleTimer() {
-        $(document).on('mousemove keydown click scroll', function () { idleTime = 0; });
-        idleInterval = setInterval(function () {
-            idleTime += 1000;
-            if (idleTime >= IDLE_TIMEOUT_LIMIT) triggerSessionTimeout();
-        }, 1000);
+        idleTime = 0;
+        clearInterval(idleInterval);
+        idleInterval = setInterval(timerIncrement, 60000); // ทุก 1 นาที
+
+        // 🌟 ใส่ Namespace .idle ป้องกันการไปลบ Event อื่นของระบบ
+        $(document).off('mousemove.idle keydown.idle click.idle scroll.idle')
+            .on('mousemove.idle keydown.idle click.idle scroll.idle', resetIdleTimer);
+    }
+
+    function resetIdleTimer() {
+        idleTime = 0;
+    }
+
+    function timerIncrement() {
+        idleTime = idleTime + 60000;
+        if (idleTime >= IDLE_TIMEOUT_LIMIT) {
+            triggerSessionTimeout();
+        }
     }
 
     function triggerSessionTimeout() {
         clearInterval(idleInterval);
-        $(document).off('mousemove keydown click scroll');
-        google.script.run.logAuthAction(currentUser.email, currentUser.fullName, 'SESSION_TIMEOUT', 'เซสชันหมดอายุ (15 นาที)');
+        // 🌟 ถอดเฉพาะ Namespace .idle ออก
+        $(document).off('mousemove.idle keydown.idle click.idle scroll.idle');
 
-        localStorage.removeItem('ap_monitoring_user');
-        currentUser = { role: 'PUBLIC', email: '', fullName: 'ผู้เยี่ยมชม', status: 'GUEST' };
-        updateUIBasedOnRole(currentUser);
-        switchPage('dashboard');
-
-        Swal.fire({ title: 'เซสชันหมดอายุ', text: 'ไม่ได้ใช้งานระบบเป็นเวลา 15 นาที ระบบได้ออกจากระบบอัตโนมัติ', icon: 'warning', confirmButtonColor: '#006400', confirmButtonText: 'ตกลง' });
+        Swal.fire({
+            title: 'หมดเวลาการเชื่อมต่อ',
+            text: 'ระบบได้ออกจากระบบอัตโนมัติเนื่องจากไม่มีการใช้งานเกิน 15 นาที เพื่อความปลอดภัยครับ',
+            icon: 'warning',
+            confirmButtonText: 'เข้าสู่ระบบใหม่',
+            confirmButtonColor: '#198754',
+            allowOutsideClick: false
+        }).then((result) => {
+            if (result.isConfirmed) {
+                performLogout();
+            }
+        });
     }
 
     // ==========================================
